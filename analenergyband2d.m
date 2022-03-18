@@ -1,11 +1,12 @@
-function [f fc] = energyband2d(x,y,co)
-% ENERGYBAND2D  energy f vs (x,y) wavevector in [0,2pi)^2, 2D Fourier series
+function [f fc] = analenergyband2d(x,y,co)
+% ANALENERGYBAND2D  energy f vs (x,y) wavevector in [0,2pi)^2, 2D Fourier series
 %
-% [f fcount] = energyband2d(x,y,co) returns f(x,y) values of same shape as x
+% [f fcount] = analenergyband2d(x,y,co) returns f(x,y) values of same shape as x
 %  and y arrays, vectorized. co is a 2D Fourier coefficient array of odd size
 %  with freqs -nmax:nmax. fcount is a counter increasing one per func eval.
+%  It is analytic w.r.t. x and y.
 
-% Barnett 12/9/12.
+% Barnett 12/9/12, changed for complex coord inputs 3/18/22.
 persistent fcount
 if isempty(fcount), fcount=1; else fcount=fcount+1; end, fc=fcount;
 
@@ -17,4 +18,4 @@ for n=-N:N
         f = f + co(n+N+1,m+N+1) * (cos(a) + 1i*sin(a));
     end
 end
-f = real(f);   % *** this means the above is twice as slow as could be
+% (do not take real part)
