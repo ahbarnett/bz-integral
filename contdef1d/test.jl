@@ -1,10 +1,10 @@
 # try contour def for 1d BZ integral, script
 # Barnett 12/2/22
+# To do: figure why error of Res-corr contour PTR rapidly dies at om>0.6 !
 
 using QuadGK
 using OffsetArrays
 using BenchmarkTools
-
 using Printf
 
 # plotting
@@ -49,8 +49,8 @@ end
 x=1.0; @printf "test evalh @ x=%g: " x; println(evalh(hm,x))
 # varinfo()
 
-η=1e-8      # broadening (quadgk obviously fails for small, below 1e-9)
-ω=0.5       # Fermi energy
+η=1e-6      # broadening (quadgk obviously fails for small, below 1e-9)
+ω=0.5       # Fermi energy (band is [-1,1])
 f(x) = 1 ./ (evalh(hm,x) .+ (-ω+1im*η))     # integrand func
 
 ng = 1000    # Re axis plot grid
@@ -63,9 +63,9 @@ fg = f(g)
 
 # ------------------------- Adaptive real quad method ----------------------
 
-Aa,err = quadgk(f,0,2π,rtol=1e-8)            # A via adaptive real integral
-@time Aa,err = quadgk(f,0,2π,rtol=1e-8)
-println("A adap quadgk:\t",Aa)
+Aa,err = quadgk(f,0,2π,rtol=1e-10)            # A via adaptive real integral
+@time Aa,err = quadgk(f,0,2π,rtol=1e-10)
+println("Aa adap quadgk:\t",Aa)              # we treat as reliable
 
 # -------------------------- Deformed contour method ------------------------
 """
@@ -86,7 +86,7 @@ Cfun, Cfunp = x->-sin(x), x->-cos(x)   # a contour good for |ω|<1
 Ac,zj = contourPTR(f,Cfun,Cfunp,100)
 Ac2,zj2 = contourPTR(f,Cfun,Cfunp,200)   # check
 @printf "contour PTR diff:        \t%.3g\n" abs(Ac-Ac2)
-@printf "contour PTR diff from Aa:\t%.3g\n" abs(Ac-Aa)
+@printf "contour PTR diff |Ac-Aa|:\t%.3g\n" abs(Ac-Aa)
 
 dx=0.03       # C plane plot grid
 gx=range(0.0,2π,step=dx); gy=range(-1.0,1.0,step=dx)
@@ -152,5 +152,5 @@ for i in eachindex(xr)
         global Ar = Ar + 2π*1im*resr[i]   # correct by residue formula
     end
 end
-@printf "Res-corr PTR diff from Ac:\t%.3g\n" abs(Ar-Ac)
+@printf "Res-corr PTR diff |Ar-Aa|:\t%.3g\n" abs(Ar-Ac)
 @gp :C :- real(zjr) imag(zjr) "w p pt 6 ps 0.3 lc '#000000' t 'Res-corr nodes'"
