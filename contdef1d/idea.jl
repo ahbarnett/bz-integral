@@ -20,7 +20,7 @@ Gnuplot.options.term="qt 0 font \"Sans,9\" size 1000,500"    # window pixels
 # choose one energy band    h(x) = sum_{|m|<=M} hm exp(imx) Fourier series
 M = 1   # max mod freq
 hm = OffsetVector(complex([1/2,0,1/2]),-M:M)    # h(x)=cos(x)
-verb = 1
+verb = 2
 
 """
     evalh(hm,x)
@@ -55,8 +55,8 @@ end
 x=1.0; @printf "test evalh @ x=%g: " x; println(evalh(hm,x))
 # varinfo()
 
-η=1e-1      # broadening (quadgk obviously hangs for small, below 1e-9)
-ω=1.5       # Fermi energy (band is [-1,1]; 1.54 pole im~1.002 nr Cimsh=1)
+η=1e-3      # broadening (quadgk obviously hangs for small, below 1e-9)
+ω=1.54      # Fermi energy (band is [-1,1]; 1.54 pole im~1.002 nr Cimsh=1)
 #for ω = 0:0.03:2  # hacky loop
 f(x) = 1 ./ (evalh(hm,x) .+ (-ω+im*η))     # integrand func
 
@@ -206,3 +206,17 @@ end
 @printf "cot-sub PTR diff |As-Ac|: \t%.3g\n" abs(As-Ac)
 # *** todo replot new integrand in C. check smooth on contour PTR nodes too
     
+# To do:
+# 1) think re working in z plane where cot becomes simple pole, faster/easier
+
+
+# 2) general alpha cot-clearing width, which can be >=< Cimsh
+#   - needs 3 cases of Im(x_j), Tex up the formulae.
+
+# 3) eta=0 case switch to h'(xj) sign as indicator of residue correction
+
+# 4) test on nastier. Auto-choose widest gap of ordered Im(xj) or log|zj| list
+
+# 5) n>1 via Boyd on det (after extracting F series for det).
+#   - vector pole correction
+
