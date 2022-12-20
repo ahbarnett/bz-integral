@@ -77,7 +77,7 @@ end
 """
 function realadap(hm,ω,η; tol=1e-8, verb=0)
     f(x) = 1 ./ (evalh(hm,x) .+ (-ω+im*η))     # integrand func (x can be vec)
-    A,err = quadgk(f,0,2π,rtol=tol)
+    A,err = quadgk(f,0,2π,rtol=tol)          # can't get more info? # fevals?
     if verb>0
         @printf "\trealadap err=%g\n" err
     end
@@ -88,10 +88,7 @@ end
     roots(a)
 
     find all complex roots of polynomial a[1]*z^n + a[2]*z^(n-1) + ... + a[n+1]
-    via companion matrix, in O(n^3) time.
-
-    To do:
-    * Bjoerck-Pereyra O(n^2) alg
+    via companion matrix EVP in O(n^3) time. Similar to MATLAB roots.
 """
 function roots(a::Vector)
     a = vec(a)              # make sure not funny shaped matrix
@@ -100,17 +97,21 @@ function roots(a::Vector)
     while length(a)>1 && a[1]==0.0         # gobble up any zero leading coeffs
         a = a[2:end]
     end
-    if isempty(a) || (a==[0.0])
+    if isempty(a) || (a==[0.0])            # done, meaningless
         return NaN
     end
     deg = length(a)-1       # a is now length>1 with nonzero 1st entry
     if deg==0
-        return T[]          # last is empty list of C-#s
+        return T[]          # done: empty list of C-#s
     end
     a = reshape(a[deg+1:-1:2] ./ a[1],(deg,1))    # make monic, col and flip
     C = [ [zeros(T,1,deg-1); Matrix{T}(I,deg-1,deg-1)] -a ]   # stack companion mat
-    E = eigen(C)    # but we don't want the vectors
-    E.values
+    eigvals!(C)              # overwrite C, and we don't want the vectors
 end
+# Note re don't need evecs: see also LinearAlgebra.LAPACK.geev!
+roots(a::OffsetVector) = roots(a.parent)   # handle OV's
+
+
 
 end
+

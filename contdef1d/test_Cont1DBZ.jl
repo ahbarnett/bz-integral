@@ -17,7 +17,7 @@ Gnuplot.options.term="qt 0 font \"Sans,9\" size 1000,500"    # window pixels
 
 # -------- module method tests ----------
 # test eval h...
-M=100
+M=50                 # high end
 hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # h(x)
 x=1.9; @printf "test evalh @ x=%g: " x; println(evalh(hm,x))
 x = 2π*rand(1000)
@@ -28,14 +28,21 @@ t_ns = minimum((@benchmark evalh(hm,x)).times)
 @printf "evalh %g G mode-targs/sec\n" (2M+1)*length(x)/t_ns   # still slow!
 # why allocs?
 
-η=1e-6; tol=1e-8; @printf "time realadap for M=%d, η=%g, tol=%g... " M η tol
-@btime realadap(hm,0.5,η,tol=tol)
+η=1e-6; ω=0.5; tol=1e-8;
+@printf "time realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
+@btime Aa = realadap(hm,ω,η,tol=tol)
 
 #println("roots test, should be +-im: ", roots([1.0,0,1.0]))
 # note a can't be a row-vec (matrix)
 roots(complex([1.0,0,1.0]))       # complex case
 roots([1.0])  # empty list
 roots([0.0])  # all C-#s
+@printf "time roots for M=%d...\n" M
+@btime roots(hm)
+
+#Ac = imshcorr(hm,ω,η,s=0.5,a=1)
+
+
 
 # ------------ end module tests---------------
 

@@ -123,10 +123,7 @@ using LinearAlgebra
     roots(a)
 
     find all complex roots of polynomial a[1]*z^n + a[2]*z^(n-1) + ... + a[n+1]
-    via companion matrix, in O(n^3) time.
-
-    To do:
-    * Bjoerck-Pereyra O(n^2) alg
+    via companion matrix EVP in O(n^3) time. (OBSOLETE)
 """
 function roots(a::Vector)
     a = vec(a)              # make sure not funny shaped matrix
@@ -208,7 +205,6 @@ end
     
 # To do:
 # 1) think re working in z plane where cot becomes simple pole, faster/easier
-
 
 # 2) general alpha cot-clearing width, which can be >=< Cimsh
 #   - needs 3 cases of Im(x_j), Tex up the formulae.
