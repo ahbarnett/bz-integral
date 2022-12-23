@@ -15,7 +15,8 @@ export
     evalh_slo,
     evalhp,
     realadap,
-    roots
+    roots,
+    imshcorr
 
 """
     evalh(hm,x)
@@ -112,6 +113,53 @@ end
 roots(a::OffsetVector) = roots(a.parent)   # handle OV's
 
 
+"""
+    A = imshcorr(hm,ω,η;N,s,a,verb)
 
+    integrate 1/(h(x) - ω + iη) from 0 to 2π using imag shift PTR contour
+    plus residue theorem corrections and pole-subtraction by cotangents.
+    hm is given by offsetvector of Fourier series indices -M:M.
+    η may be >0 or =0 (giving lim -> 0+).
+"""
+function imshcorr(hm,ω,η; N::Int=20, s=1.0, a=1.0, verb=0)
+    hmplusc = copy(hm);                # otherwise changing hmconst changes hm!
+    hmplusc[0] = hm[0] + (-ω+im*η)     # F series for denominator
+    M = -hm.offsets[1]-1
+    zr = roots(reverse(hmplusc))       # shift powers by M, use poly coeff ord
+    xr = @. log(zr)/im                 # solve z = e^{ix} for roots x of denom
+    xr = @. mod(real(xr),2π) + im*imag(xr)    # fold Re to [0,2π), for humans
+    hpxr = evalhp(hm,xr)               # h' at all roots *** maybe a waste?
+    
+    eps = 1e-13    # dist from Re axis considered real when η=0
+    # *** todo choose N,s,a via M, xr (eg s staying >1e-3 from all imag(xr))
+    if verb>0
+        @printf "imshcorr: N=%d s=%g a=%g eps=%g...\n" N s a eps
+    end
+    xj = im*s .+ 2π*(1:N)/N            # PTR nodes on imag-shifted contour
+    w = 2π/N                           # all weights
+    fj = 1.0 ./ evalh(hmplusc, xj)     # bare integrand at nodes
+    A = w*sum(fj)                      # bare PTR
+    for r in eachindex(xr)             # all poles (roots of denom)
+        imx = imag(xr[r])
+        resthm = (0.0 < imx < s)
+        if η==0.0 && abs(imx)<eps      # update whether to apply residue thm
+            resthm = (real(hpxr[r]) < 0.0)     # so eta->0+ gives Re pole ->0+
+        end
+        res = 1.0 ./ hpxr[r]           # Res of f = 1/h'(x_r)
+        A = A + 2π*im * res * resthm
+        cotcorr = (abs(imx-s) < a)
+        if cotcorr
+            cotj = @. cot((xj-xr[r])/2)        # cot at nodes
+            # *** speed up cot eval via phase-stepping for cos, sin?
+            A = A - (w*res/2)*sum(cotj)        # pole-cancel correct to PTR
+            cotsign = (2*(imx>s)-1)    # sign of analytic cot integral
+            A = A + cotsign * π*im * res
+        end
+        if verb>0
+            @printf "\tpole %g+%gi:   \t resthm=%d \t cotcorr=%d\n" real(xr[r]) imx resthm cotcorr
+        end
+    end
+    A
 end
 
+end
