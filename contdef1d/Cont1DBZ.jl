@@ -42,11 +42,15 @@ end
     Dev notes: Turns out writing out the i loop is faster than vector notation
 """
 function evalh_wind(hm,x::AbstractArray)
-    h = complex(zero(x))                  # preserves type
-    dph = exp.(im*x)            # phase to wind by. (don't assume x real)
+    T = promote_type(eltype(hm), complex(float(eltype(x)))) # preserves type
+    # allocate arrays
+    h = zeros(T, size(x))
+    dph = similar(h); ph = similar(h)
+    # allocation-free kernel
+    @. dph = cis(x)            # phase to wind by. (don't assume x real)
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(hm)-1
-    ph = exp.(im*mmin*x)
+    @. ph = cis(mmin*x)
     for m=mmin:mmax             # this loop must be sequential
         @inbounds @fastmath for i in eachindex(h)   # this loop triv parallelizable, but complex arith so no @avx
             h[i] += hm[m]*ph[i]
@@ -65,28 +69,32 @@ evalh_wind(hm,x::Number) = evalh_wind(hm,[x])[1]  # wrapper for scalar -> scalar
     Use phase-winding method & LoopVectorization / multithreading (?)
     @avx is 50% faster than @axvt (multithr).
 """
-function evalh(hm,x::AbstractArray)
-    mmin = 1+hm.offsets[1]       # get start & stop freq indices
-    mmax = mmin+length(hm)-1
-    ph = exp.(im*mmin*x)          # starting phase (don't assume x real)
-    #phi, phr = sincos.(mmin*x);  # only useful if x were real
-    phr = real(ph); phi = imag(ph)
-    dph = exp.(im*x)             # phase to wind by (don't assume x real)
-    dphr = real(dph); dphi = imag(dph)
-    hr = zero(real(x)); hi = zero(hr)       # zero (w/o s) = same type and size
-    hmr = real(hm); hmi = imag(hm)
+function evalh(chm,x::AbstractArray)
+    T = promote_type(eltype(chm), complex(float(eltype(x)))) # preserves type
+    # allocate arrays
+    ch = zeros(T, size(x))
+    cdph = similar(ch); cph = similar(ch)
+    # allocation-free kernel
+    mmin = 1+chm.offsets[1]       # get start & stop freq indices
+    mmax = mmin+length(chm)-1
+    @. cph = cis(mmin*x)          # starting phase (don't assume x real)
+    @. cdph = cis(x)             # phase to wind by (don't assume x real)
+    # https://github.com/JuliaSIMD/LoopVectorization.jl/issues/19
+    hm = reinterpret(reshape, real(eltype(chm)), chm)
+    h = reinterpret(reshape, real(eltype(ch)), ch)
+    ph = reinterpret(reshape, real(eltype(cph)), cph)
+    dph = reinterpret(reshape, real(eltype(cdph)), cdph)
     for m=mmin:mmax             # this loop must be sequential
-        @avx for i in eachindex(hr)   # this loop triv par (& avx-ble since Re)
-            hr[i] += hmr[m]*phr[i] - hmi[m]*phi[i]  # complex arith via reals
-            hi[i] += hmi[m]*phr[i] + hmr[m]*phi[i]  # NB if hi scalar, setindex! borks
-            tr = dphr[i]*phr[i] - dphi[i]*phi[i]   # temp vars for clean update
-            ti = dphi[i]*phr[i] + dphr[i]*phi[i]
-            phr[i] = tr
-            phi[i] = ti
-            # phr[i], phi[i] = dphr[i]*phr[i] - dphi[i]*phi[i], dphi[i]*phr[i] + dphr[i]*phi[i]       # do both re, im update together *** @avx was still wrong!
+        @avx for i in eachindex(ch)   # this loop triv par (& avx-ble since Re)
+            h[1,i] += hm[1,m]*ph[1,i] - hm[2,m]*ph[2,i]  # complex arith via reals
+            h[2,i] += hm[2,m]*ph[1,i] + hm[1,m]*ph[2,i]  # NB if hi scalar, setindex! borks
+            tr = dph[1,i]*ph[1,i] - dph[2,i]*ph[2,i]   # temp vars for clean update
+            ti = dph[2,i]*ph[1,i] + dph[1,i]*ph[2,i]
+            ph[1,i] = tr
+            ph[2,i] = ti
         end
     end
-    complex.(hr,hi)
+    ch
 end
 evalh(hm,x::Number) = evalh(hm,[x])[1]          # wrapper for scalar -> scalar
 
