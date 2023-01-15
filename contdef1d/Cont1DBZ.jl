@@ -70,28 +70,32 @@ evalh_wind(hm,x::Number) = evalh_wind(hm,[x])[1]  # wrapper for scalar -> scalar
     @avx is 50% faster than @axvt (multithr).
 """
 function evalh(chm,x::AbstractArray)
-    T = promote_type(eltype(chm), complex(float(eltype(x)))) # preserves type
+    Tc = promote_type(eltype(chm), complex(float(eltype(x)))) # preserves type
+    Tr = real(float(eltype(x))) # preserves type
     # allocate arrays
-    ch = zeros(T, size(x))
-    cdph = similar(ch); cph = similar(ch)
+    ch = zeros(Tc, size(x))
+    dphr = Vector{Tr}(undef, size(x))
+    dphi = Vector{Tr}(undef, size(x))
+    phr  = Vector{Tr}(undef, size(x))
+    phi  = Vector{Tr}(undef, size(x))
     # allocation-free kernel
     mmin = 1+chm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(chm)-1
-    @. cph = cis(mmin*x)          # starting phase (don't assume x real)
-    @. cdph = cis(x)             # phase to wind by (don't assume x real)
+    for (i, e) in enumerate(x)
+        phr[i], phi[i] = reim(cis(mmin*e))          # starting phase (don't assume x real)
+        dphr[i], dphi[i] = reim(cis(e))             # phase to wind by (don't assume x real)
+    end
     # https://github.com/JuliaSIMD/LoopVectorization.jl/issues/19
     hm = reinterpret(reshape, real(eltype(chm)), chm)
     h = reinterpret(reshape, real(eltype(ch)), ch)
-    ph = reinterpret(reshape, real(eltype(cph)), cph)
-    dph = reinterpret(reshape, real(eltype(cdph)), cdph)
     for m=mmin:mmax             # this loop must be sequential
-        @avx for i in eachindex(ch)   # this loop triv par (& avx-ble since Re)
-            h[1,i] += hm[1,m]*ph[1,i] - hm[2,m]*ph[2,i]  # complex arith via reals
-            h[2,i] += hm[2,m]*ph[1,i] + hm[1,m]*ph[2,i]  # NB if hi scalar, setindex! borks
-            tr = dph[1,i]*ph[1,i] - dph[2,i]*ph[2,i]   # temp vars for clean update
-            ti = dph[2,i]*ph[1,i] + dph[1,i]*ph[2,i]
-            ph[1,i] = tr
-            ph[2,i] = ti
+        @avx for i in eachindex(phr)   # this loop triv par (& avx-ble since Re)
+            h[1,i] += hm[1,m]*phr[i] - hm[2,m]*phi[i]  # complex arith via reals
+            h[2,i] += hm[2,m]*phr[i] + hm[1,m]*phi[i]  # NB if hi scalar, setindex! borks
+            tr = dphr[i]*phr[i] - dphi[i]*phi[i]   # temp vars for clean update
+            ti = dphi[i]*phr[i] + dphr[i]*phi[i]
+            phr[i] = tr
+            phi[i] = ti
         end
     end
     ch
