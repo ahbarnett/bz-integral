@@ -73,7 +73,9 @@ function evalh(hm,x::AbstractArray)
     Tc = promote_type(eltype(hm), complex(float(eltype(x)))) # preserves type
     Tr = real(float(eltype(x))) # preserves type
     # allocate arrays
-    ch = zeros(Tc, size(x))
+    hc = zeros(Tc, size(x))
+    hr = zeros(real(Tc), size(x))
+    hi = zeros(real(Tc), size(x))
     dphr = Vector{Tr}(undef, size(x))
     dphi = Vector{Tr}(undef, size(x))
     phr  = Vector{Tr}(undef, size(x))
@@ -85,20 +87,19 @@ function evalh(hm,x::AbstractArray)
         phr[i], phi[i] = reim(cis(mmin*e))          # starting phase (don't assume x real)
         dphr[i], dphi[i] = reim(cis(e))             # phase to wind by (don't assume x real)
     end
-    # https://github.com/JuliaSIMD/LoopVectorization.jl/issues/19
-    h = reinterpret(reshape, real(eltype(ch)), ch)
     for m=mmin:mmax             # this loop must be sequential
         hmr, hmi = reim(hm[m])
         @avx for i in eachindex(phr)   # this loop triv par (& avx-ble since Re)
-            h[1,i] += hmr*phr[i] - hmi*phi[i]  # complex arith via reals
-            h[2,i] += hmi*phr[i] + hmr*phi[i]  # NB if hi scalar, setindex! borks
+            hr[i] += hmr*phr[i] - hmi*phi[i]  # complex arith via reals
+            hi[i] += hmi*phr[i] + hmr*phi[i]  # NB if hi scalar, setindex! borks
             tr = dphr[i]*phr[i] - dphi[i]*phi[i]   # temp vars for clean update
             ti = dphi[i]*phr[i] + dphr[i]*phi[i]
             phr[i] = tr
             phi[i] = ti
         end
     end
-    ch
+    @. hc = complex(hr, hi)
+    hc
 end
 evalh(hm,x::Number) = evalh(hm,[x])[1]          # wrapper for scalar -> scalar
 
