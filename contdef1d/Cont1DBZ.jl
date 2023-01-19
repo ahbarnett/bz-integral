@@ -216,23 +216,25 @@ end
 
 """
     fourier_kernel(C::OffsetVector, x)
-    fourier_kernel(C::Vector, x)
+    fourier_kernel(C::Vector, x, [myinv=inv])
 
-A version of `fourier_kernel!` for 1D Fourier series evaluation that is not in
-place, but allocates an output array. This is usually faster for series whose
-element type is a StaticArray for integrals that don't need to reuse the data.
+A non-allocating 1D Fourier series evaluator that assumes the input Fourier
+coefficients `C` are an `OffsetVector` with symmetric indices (i.e. `-m:m`). The
+optional argument `myinv` is specialized to `conj` when `x isa Real` since that
+is when the twiddle factors are roots of unity.
 """
 @inline fourier_kernel(C::OffsetVector, x) = fourier_kernel(C.parent, x)
-function fourier_kernel(C::Vector, x)
+fourier_kernel(C::Vector, x::Real) = fourier_kernel(C, x, conj) # z = cis(x) is a root of unit so inv(z) = conj(z)
+function fourier_kernel(C::Vector, x, myinv=inv)
     s = size(C,1)
     isodd(s) || return error("expected an array with an odd number of coefficients")
     m = div(s,2)
     @inbounds r = C[m+1]
     z₀ = cis(x)
     z = one(z₀)
-    @inbounds for n in Base.OneTo(m)
+    @fastmath @inbounds for n in Base.OneTo(m)
         z *= z₀
-        r += z*C[n+m+1] + inv(z)*C[-n+m+1] # maybe this loop layout invites cache misses?
+        r += z*C[n+m+1] + myinv(z)*C[-n+m+1] # maybe this loop layout invites cache misses since the indices are not adjacent?
     end
     r
 end
