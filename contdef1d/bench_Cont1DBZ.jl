@@ -27,6 +27,8 @@ for M = [1,10,100]
     @btime evalh($hm,$x)        # why so many allocs & RAM?
     t_ns = minimum((@benchmark evalh($hm,$x)).times)
     @printf "evalh %g G mode-targs/sec\n" (2M+1)*length(x)/t_ns
+    @printf "fourier_kernel:    \t"
+    @btime map(x -> fourier_kernel($hm,x), $x)
     
     @printf "\tQuadr meths:\nrealadap ω=%g η=%g tol=%g:  " ω η tol
     @btime realadap($hm,ω,η,tol=tol)
