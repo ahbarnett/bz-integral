@@ -23,6 +23,7 @@ for t=1:length(xtest)
     end
     @printf "evalh chk: %g\n" norm(evalh(hm,x) .- evalh_ref(hm,x),Inf)
     @printf "evalh_wind chk: %g\n" norm(evalh_wind(hm,x) .- evalh_ref(hm,x),Inf)
+    @printf "fourier_kernel chk: %g\n" norm(fourier_kernel.(Ref(hm),x) .- evalh_ref(hm,x),Inf)
 end
 
 η=1e-6; ω=0.5; tol=1e-8;

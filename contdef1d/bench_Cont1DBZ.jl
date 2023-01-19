@@ -30,6 +30,8 @@ for M = [1,10,100]
     
     @printf "\tQuadr meths:\nrealadap ω=%g η=%g tol=%g:  " ω η tol
     @btime realadap($hm,ω,η,tol=tol)
+    @printf "\tQuadr meths:\nrealadap_lxvm ω=%g η=%g tol=%g:  " ω η tol
+    @btime realadap_lxvm($hm,ω,η,tol=tol)
     @printf "roots (matrix size 2M+1=%d):  " 2M+1
     coeffs = reverse(hm.parent)
     @btime roots($coeffs)

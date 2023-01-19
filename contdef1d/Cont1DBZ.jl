@@ -19,7 +19,9 @@ export
     evalhp,
     realadap,
     roots,
-    imshcorr
+    imshcorr,
+    fourier_kernel,
+    realadap_lxvm
 
 """
     evalh_ref(hm,x) - slow version of evalh; reference implementation
@@ -209,6 +211,36 @@ function imshcorr(hm,ω,η; N::Int=20, s=1.0, a=1.0, verb=0)
             @printf "\tpole %g+%gi:   \t resthm=%d \t cotcorr=%d\n" real(xr[r]) imx resthm cotcorr
         end
     end
+    A
+end
+
+"""
+    fourier_kernel(C::OffsetVector, x)
+    fourier_kernel(C::Vector, x)
+
+A version of `fourier_kernel!` for 1D Fourier series evaluation that is not in
+place, but allocates an output array. This is usually faster for series whose
+element type is a StaticArray for integrals that don't need to reuse the data.
+"""
+@inline fourier_kernel(C::OffsetVector, x) = fourier_kernel(C.parent, x)
+function fourier_kernel(C::Vector, x)
+    s = size(C,1)
+    isodd(s) || return error("expected an array with an odd number of coefficients")
+    m = div(s,2)
+    @inbounds r = C[m+1]
+    z₀ = cis(x)
+    z = one(z₀)
+    @inbounds for n in Base.OneTo(m)
+        z *= z₀
+        r += z*C[n+m+1] + inv(z)*C[-n+m+1] # maybe this loop layout invites cache misses?
+    end
+    r
+end
+
+function realadap_lxvm(hm, ω, η; tol=1e-8, verb=0)
+    f(x) = inv(complex(ω,η) - fourier_kernel(hm,x))
+    A,err = quadgk(f, 0.0, 2pi, rtol=tol)
+    verb>0 && @printf "\trealadap_lxvm claimed err=%g\n" err
     A
 end
 
