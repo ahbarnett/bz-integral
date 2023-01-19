@@ -19,7 +19,9 @@ export
     evalhp,
     realadap,
     roots,
-    imshcorr
+    imshcorr,
+    fourier_kernel,
+    realadap_lxvm
 
 """
     evalh_ref(hm,x) - slow version of evalh; reference implementation
@@ -42,11 +44,15 @@ end
     Dev notes: Turns out writing out the i loop is faster than vector notation
 """
 function evalh_wind(hm,x::AbstractArray)
-    h = complex(zero(x))                  # preserves type
-    dph = exp.(im*x)            # phase to wind by. (don't assume x real)
+    T = promote_type(eltype(hm), complex(float(eltype(x)))) # preserves type
+    # allocate arrays
+    h = zeros(T, size(x))
+    dph = similar(h); ph = similar(h)
+    # allocation-free kernel
+    @. dph = cis(x)            # phase to wind by. (don't assume x real)
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(hm)-1
-    ph = exp.(im*mmin*x)
+    @. ph = cis(mmin*x)
     for m=mmin:mmax             # this loop must be sequential
         @inbounds @fastmath for i in eachindex(h)   # this loop triv parallelizable, but complex arith so no @avx
             h[i] += hm[m]*ph[i]
@@ -66,27 +72,36 @@ evalh_wind(hm,x::Number) = evalh_wind(hm,[x])[1]  # wrapper for scalar -> scalar
     @avx is 50% faster than @axvt (multithr).
 """
 function evalh(hm,x::AbstractArray)
+    Tc = promote_type(eltype(hm), complex(float(eltype(x)))) # preserves type
+    Tr = real(float(eltype(x))) # preserves type
+    # allocate arrays
+    hc = zeros(Tc, size(x))
+    hr = zeros(real(Tc), size(x))
+    hi = zeros(real(Tc), size(x))
+    dphr = Vector{Tr}(undef, size(x))
+    dphi = Vector{Tr}(undef, size(x))
+    phr  = Vector{Tr}(undef, size(x))
+    phi  = Vector{Tr}(undef, size(x))
+    # allocation-free kernel
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(hm)-1
-    ph = exp.(im*mmin*x)          # starting phase (don't assume x real)
-    #phi, phr = sincos.(mmin*x);  # only useful if x were real
-    phr = real(ph); phi = imag(ph)
-    dph = exp.(im*x)             # phase to wind by (don't assume x real)
-    dphr = real(dph); dphi = imag(dph)
-    hr = zero(real(x)); hi = zero(hr)       # zero (w/o s) = same type and size
-    hmr = real(hm); hmi = imag(hm)
+    for (i, e) in enumerate(x)
+        phr[i], phi[i] = reim(cis(mmin*e))          # starting phase (don't assume x real)
+        dphr[i], dphi[i] = reim(cis(e))             # phase to wind by (don't assume x real)
+    end
     for m=mmin:mmax             # this loop must be sequential
-        @avx for i in eachindex(hr)   # this loop triv par (& avx-ble since Re)
-            hr[i] += hmr[m]*phr[i] - hmi[m]*phi[i]  # complex arith via reals
-            hi[i] += hmi[m]*phr[i] + hmr[m]*phi[i]  # NB if hi scalar, setindex! borks
+        hmr, hmi = reim(hm[m])
+        @avx for i in eachindex(phr)   # this loop triv par (& avx-ble since Re)
+            hr[i] += hmr*phr[i] - hmi*phi[i]  # complex arith via reals
+            hi[i] += hmi*phr[i] + hmr*phi[i]  # NB if hi scalar, setindex! borks
             tr = dphr[i]*phr[i] - dphi[i]*phi[i]   # temp vars for clean update
             ti = dphi[i]*phr[i] + dphr[i]*phi[i]
             phr[i] = tr
             phi[i] = ti
-            # phr[i], phi[i] = dphr[i]*phr[i] - dphi[i]*phi[i], dphi[i]*phr[i] + dphr[i]*phi[i]       # do both re, im update together *** @avx was still wrong!
         end
     end
-    complex.(hr,hi)
+    @. hc = complex(hr, hi)
+    hc
 end
 evalh(hm,x::Number) = evalh(hm,[x])[1]          # wrapper for scalar -> scalar
 
@@ -196,6 +211,38 @@ function imshcorr(hm,ω,η; N::Int=20, s=1.0, a=1.0, verb=0)
             @printf "\tpole %g+%gi:   \t resthm=%d \t cotcorr=%d\n" real(xr[r]) imx resthm cotcorr
         end
     end
+    A
+end
+
+"""
+    fourier_kernel(C::OffsetVector, x)
+    fourier_kernel(C::Vector, x, [myinv=inv])
+
+A non-allocating 1D Fourier series evaluator that assumes the input Fourier
+coefficients `C` are an `OffsetVector` with symmetric indices (i.e. `-m:m`). The
+optional argument `myinv` is specialized to `conj` when `x isa Real` since that
+is when the twiddle factors are roots of unity.
+"""
+@inline fourier_kernel(C::OffsetVector, x) = fourier_kernel(C.parent, x)
+fourier_kernel(C::Vector, x::Real) = fourier_kernel(C, x, conj) # z = cis(x) is a root of unit so inv(z) = conj(z)
+function fourier_kernel(C::Vector, x, myinv=inv)
+    s = size(C,1)
+    isodd(s) || return error("expected an array with an odd number of coefficients")
+    m = div(s,2)
+    @inbounds r = C[m+1]
+    z₀ = cis(x)
+    z = one(z₀)
+    @fastmath @inbounds for n in Base.OneTo(m)
+        z *= z₀
+        r += z*C[n+m+1] + myinv(z)*C[-n+m+1] # maybe this loop layout invites cache misses since the indices are not adjacent?
+    end
+    r
+end
+
+function realadap_lxvm(hm, ω, η; tol=1e-8, verb=0)
+    f(x) = inv(complex(ω,η) - fourier_kernel(hm,x))
+    A,err = quadgk(f, 0.0, 2pi, rtol=tol)
+    verb>0 && @printf "\trealadap_lxvm claimed err=%g\n" err
     A
 end
 
