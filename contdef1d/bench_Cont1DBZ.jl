@@ -5,6 +5,7 @@ using Cont1DBZ
 using OffsetArrays
 using Printf
 
+#using TimerOutputs
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 0.1  # for btime only (<0.1 no help)
 
@@ -16,9 +17,9 @@ x = 2π*rand(1000)
 NPTR=30
 
 for M = [1,10,100]
-    @printf "bench Cont1DBZ with M=%d.\n\tEval at %d targs...\n" M length(x)
-    hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # h(x)
-    hm = (hm + conj(reverse(hm)))/2                     # make h(x) real
+    @printf "\nbench Cont1DBZ with M=%d.\n\tEval at %d targs...\n" M length(x)
+    local hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # h(x)
+    local hm = (hm + conj(reverse(hm)))/2                     # make h(x) real
     @printf "evalh_ref:\t"
     @btime evalh_ref($hm,$x)
     @printf "evalh_wind:\t"
@@ -37,6 +38,9 @@ for M = [1,10,100]
     @printf "roots (matrix size 2M+1=%d):  " 2M+1
     coeffs = reverse(hm.parent)
     @btime roots($coeffs)
+    @printf "roots_best (matrix size 2M+1=%d):  " 2M+1
+    coeffs = reverse(hm.parent)
+    @btime roots_best($coeffs)
     @printf "imshcorr same ω and η as above, NPTR=%d:   " NPTR
     @btime imshcorr($hm,ω,η,N=NPTR)
 end

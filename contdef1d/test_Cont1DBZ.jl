@@ -31,7 +31,7 @@ end
 @printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
 
-@printf "Now test just our roots method (also see bench_roots.jl)...\n"
+@printf "Now test our roots method & the best version (also see bench_roots.jl)...\n"
 @testset "roots" begin
 r = roots([1.0,0,1.0])                # real coeffs case
 @test maximum(abs.(r).-1.0) < 1e-14 && (sort(angle.(r)) ≈ [-pi/2,pi/2])  # +-i
@@ -41,6 +41,15 @@ r = roots(complex([1.0,0,1.0]))       # complex case
 @test roots([1.0]) == []              # triv case no roots
 r = roots([0.0])                      # all C-#s
 @test isnan(r[1]) && (length(r)==1)
+end
+@testset "roots_best" begin
+r = roots_best([1.0,0,1.0])                # real coeffs case
+@test maximum(abs.(r).-1.0) < 1e-14 && (sort(angle.(r)) ≈ [-pi/2,pi/2])  # +-i
+r = roots_best(complex([1.0,0,1.0]))       # complex case
+@test maximum(abs.(r).-1.0) < 1e-14 && (sort(angle.(r)) ≈ [-pi/2,pi/2])  # +-i
+# dumb cases (may differ from above roots())
+@test roots_best([1.0]) == []              # triv case no roots
+#r = roots_best([0.0])                      # seems like can't handle
 end
     
 # quadr: imag-shifted corrected PTR method...
