@@ -1,5 +1,6 @@
 # unit tester for contour 1D BZ module in this dir.
 # Barnett 12/19/22. LXVM added fourier_kernel which is an evalh replacement.
+# Started matrix (n>1) case 1/20/23.
 
 push!(LOAD_PATH,".")
 using Cont1DBZ
@@ -7,17 +8,28 @@ using LinearAlgebra
 using Printf
 using OffsetArrays
 using Test
+using StaticArrays
 
 # -------- module method tests ----------
-M=10                 # 50 is high end
+M=10         # max mag Fourier freq index
 hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # F-coeffs of h(x)
-hm = (hm + conj(reverse(hm)))/2                     # make h(x) real
+hm = (hm + conj(reverse(hm)))/2                     # make h(x) real for x Re
+
+n = 3        # vector (tight-binding) case
+# pure OA versions.
+#Hm = OffsetArray(randn(ComplexF64,(n,n,2M+1)),1:n,1:n,-M:M)  # n*n*(2M+1)
+#Hmconj = permutedims(conj(Hm),(2,1,3))    # hermitian transpose wrt dims (1,2)
+#Hm = (Hm + (reverse(Hmconj,dims=3)))/2              # H(x) hermitian if x Re
+mlist = -M:M   # OV of SAs version
+Hm = OffsetVector([SMatrix{n,n}(randn(ComplexF64,(n,n))) for m in mlist], mlist)
+Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist)   # ugh! has to be better!
+Hm = (Hm + reverse(Hmconj))/2                           # H(x) hermitian if x Re
 
 # test eval for x a scalar, vector, real, complex (each an el of tuple)...
 nx = 1000
 xtest = (1.9, [1.3], 2π*rand(nx), 2π*rand(nx)+im*rand(nx))
 for t=1:length(xtest)
-    @printf "evalh variants consistency: test #%d...\n" t
+    @printf "scalar evalh variants consistency: test #%d...\n" t
     local x = xtest[t]
     if t==1
         @printf "\tevalh @ x=%g: " x; println(evalh(hm,x))
@@ -25,11 +37,27 @@ for t=1:length(xtest)
     @printf "evalh chk:          %.3g\n" norm(evalh(hm,x) .- evalh_ref(hm,x),Inf)
     @printf "evalh_wind chk:     %.3g\n" norm(evalh_wind(hm,x) .- evalh_ref(hm,x),Inf)
     @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(hm),x) .- evalh_ref(hm,x),Inf)
+    @printf "matrix evalH variants consistency: test #%d...\n" t
+    H = evalH_ref(Hm,x)
+    if t<=2
+        @printf "evalH_ref simply check is Herm: %.3g\n" norm(H-H',Inf)
+    end
+    # *** matrix evalH tests
+
+    
 end
 
 η=1e-6; ω=0.5; tol=1e-8;
 @printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
+@printf "\tAa = "; println(Aa)
+@printf "test realadapmat for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
+Aan = realadapmat(Hm,ω,η,tol=tol, verb=1)
+@printf "\tAan = "; println(Aan)
+
+# *** continue with roots via NEVP...
+
+
 
 @printf "Now test our roots method & the best version (also see bench_roots.jl)...\n"
 @testset "roots" begin

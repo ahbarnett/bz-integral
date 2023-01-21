@@ -29,7 +29,7 @@ for M = [8,32,128]
             TIME(evalh_ref)(hm,x)
             TIME(evalh_wind)(hm,x)
             TIME(evalh)(hm,x)
-            TIME(fourier_kernel)(hm,x)
+            TIME(fourier_kernel)(hm,x)    # note uses array version
         end
         coeffs = reverse(hm.parent)
         @timeit TIME @sprintf("root-finding (matrix size 2M+1=%d)",2M+1) begin

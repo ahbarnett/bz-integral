@@ -19,7 +19,9 @@ export
     evalh_wind,
     evalh,
     evalhp,
+    evalH_ref,
     realadap,
+    realadapmat,
     roots,
     roots_best,
     imshcorr,
@@ -28,6 +30,9 @@ export
 
 """
     evalh_ref(hm,x) - slow version of evalh; reference implementation
+
+    evaluates band Hamiltonian h(x) as complex Fourier series with coeffs hm
+    (an offsetvector), at x, a target or vector of targets (real or complex)
 """
 function evalh_ref(hm,x)
     h = complex(zero(x))                  # preserves type
@@ -75,6 +80,7 @@ evalh_wind(hm,x::Number) = evalh_wind(hm,[x])[1]  # wrapper for scalar -> scalar
     @avx is 50% faster than @axvt (multithr).
 """
 function evalh(hm,x::AbstractArray)
+    # lxvm's low-allocation set-up...
     Tc = promote_type(eltype(hm), complex(float(eltype(x)))) # preserves type
     Tr = real(float(eltype(x))) # preserves type
     # allocate arrays
@@ -116,7 +122,7 @@ evalh(hm,x::Number) = evalh(hm,[x])[1]          # wrapper for scalar -> scalar
     Slow reference version.
 """
 function evalhp(hm,x)
-    Tout = eltype(complex(hm))
+    Tout = eltype(complex(hm))   # this does a bad alloc, right?
     hp = zeros(Tout,size(x))
     for m in eachindex(hm)
         hp = hp .+ hm[m]*im*m*exp.(im*m*x)
@@ -138,7 +144,7 @@ By LXVM
 """
 @inline fourier_kernel(C::OffsetVector, x) = fourier_kernel(C.parent, x)
 fourier_kernel(C::Vector, x::Real) = fourier_kernel(C, x, conj) # z = cis(x) is a root of unit so inv(z) = conj(z)
-fourier_kernel(C::OffsetVector, x::AbstractArray) = map(y -> fourier_kernel(C,y), x)
+fourier_kernel(C::OffsetVector, x::AbstractArray) = map(y -> fourier_kernel(C,y), x)   # handle arrays
 function fourier_kernel(C::Vector, x, myinv=inv)
     s = size(C,1)
     isodd(s) || return error("expected an array with an odd number of coefficients")
@@ -152,6 +158,38 @@ function fourier_kernel(C::Vector, x, myinv=inv)
     end
     r
 end
+
+"""
+    evalH_ref(hm,x) - slow reference implementation
+
+    evaluates band Hamiltonian matrix H(x) as complex Fourier series with
+    length 2M+1 OffsetVector of SMatrix{n,n} valued coeffs,
+    at x, a single (real or complex) target, returning a single SMatrix{n,n}.
+    If x is a vector of targets, return a vector of SMatrix{n,n}.
+"""
+function evalH_ref(Hm,x::Number)
+    H = zero(eltype(Hm))       # assume always complex coeffs
+    for m in eachindex(Hm)
+        H = H .+ Hm[m]*exp.(im*m*x)   # SMatrix-valued ops
+    end
+    H
+end
+evalH_ref(Hm,x::AbstractArray) = map(x -> evalH_ref(Hm,x), x)   # do vector x
+
+
+
+# *** continue w/ other evalH faster.. or overload methods w/ same names?
+# ...
+
+
+
+
+
+
+
+
+
+####### Conventional real-axis quadrature methods...
 
 """
     A = realadap(hm,ω,η;tol,verb)
@@ -182,6 +220,26 @@ function realadap_lxvm(hm, ω, η; tol=1e-8, verb=0)
     verb>0 && @printf "\trealadap_lxvm claimed err=%g\n" err
     A
 end
+
+"""
+    A = realadapmat(Hm,ω,η;tol,verb)
+
+    use quadgk on Re axis to integrate scalar Tr (ω - H(x) + iη)^{-1}, where
+    Hm is given by OffsetVector of SMatrix{n,n} valued Fourier series coeffs.
+    tol controls rtol.
+
+    Barnett messing around 1/20/23.
+"""
+function realadapmat(Hm,ω,η; tol=1e-8, verb=0)
+    f(x) = map(x -> sum(diag(inv((ω+im*η)*I - evalH_ref(Hm,x)))), x)  # integrand func (the map handles vector x)
+    A,err = quadgk(f,0,2π,rtol=tol)          # can't get more info? # fevals?
+    if verb>0
+        @printf "\trealadapmat claimed err=%g\n" err
+    end
+    A
+end
+
+
 
 
 
