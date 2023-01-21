@@ -138,6 +138,7 @@ By LXVM
 """
 @inline fourier_kernel(C::OffsetVector, x) = fourier_kernel(C.parent, x)
 fourier_kernel(C::Vector, x::Real) = fourier_kernel(C, x, conj) # z = cis(x) is a root of unit so inv(z) = conj(z)
+fourier_kernel(C::OffsetVector, x::AbstractArray) = map(y -> fourier_kernel(C,y), x)
 function fourier_kernel(C::Vector, x, myinv=inv)
     s = size(C,1)
     isodd(s) || return error("expected an array with an odd number of coefficients")
