@@ -30,34 +30,24 @@ export
 
 
 """
-    ph_eltype(x)
+    ph_type(x)
 
 Helper function that returns the type of output needed to store the values of
 Fourier coefficients.
 
 By LXVM
 """
-ph_eltype(x) = Base.promote_op(cis, eltype(x))
+ph_type(x) = Base.promote_op(cis, eltype(x))
 
 """
-    hx_eltype(hm, x)
+    hx_type(hm, x)
 
 Helper function that returns the type of output needed to store the result of a
 Fourier series.
 
 By LXVM
 """
-hx_eltype(hm,x) = Base.promote_op(*, eltype(hm), ph_eltype(x))
-
-"""
-    zero_hx(hm, x)
-
-Function that returns the zero element of the Fourier series.
-Necessary because it is not idiomatic to have vectorized functions such as evalh
-By LXVM
-"""
-zero_hx(hm,x::Number) = zero(hx_eltype(hm,x))
-zero_hx(hm,x::AbstractArray) = zeros(hx_eltype(hm,x), size(x))
+hx_type(hm,x) = Base.promote_op(*, eltype(hm), ph_type(x))
 
 """
     evalh_ref(hm,x) - slow version of evalh; reference implementation
@@ -65,13 +55,14 @@ zero_hx(hm,x::AbstractArray) = zeros(hx_eltype(hm,x), size(x))
     evaluates band Hamiltonian h(x) as complex Fourier series with coeffs hm
     (an offsetvector), at x, a target or vector of targets (real or complex)
 """
-function evalh_ref(hm,x)
-    h = zero_hx(hm,x)                  # preserves type
+function evalh_ref(hm,x::Number)
+    h = zero(hx_type(hm,x))                  # preserves type
     for m in eachindex(hm)
-        h += Ref(hm[m]) .* exp.(im .* m .* x) # Ref acts as a non-broadcasting wrapper
+        h += hm[m]*exp(im*m*x)
     end
     h
 end
+evalh_ref(hm,x::AbstractArray) = map(y -> evalh_ref(hm,y), x)
 
 """
     evalh_wind(hm,x)
@@ -84,8 +75,8 @@ end
 """
 function evalh_wind(hm,x::AbstractArray)
     # allocate arrays
-    h = zeros(hx_eltype(hm,x), size(x))
-    ph = zeros(ph_eltype(x), size(x)); dph = similar(ph)
+    h = zeros(hx_type(hm,x), size(x))
+    ph = zeros(ph_type(x), size(x)); dph = similar(ph)
     # allocation-free kernel
     @. dph = cis(x)            # phase to wind by. (don't assume x real)
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
@@ -102,7 +93,7 @@ end
 function evalh_wind(hm,x::Number) # scalar version, nonallocating
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(hm)-1
-    h = zero(hx_eltype(hm,x))
+    h = zero(hx_type(hm,x))
     ph = exp(im*mmin*x)
     dph = exp(im*x)
     @inbounds @fastmath for m=mmin:mmax
@@ -123,13 +114,13 @@ end
 function evalh(hm::AbstractVector{<:Number},x::AbstractArray)
     # lxvm's low-allocation set-up...
     # allocate arrays
-    hc = zeros(hx_eltype(hm, x), size(x))
+    hc = zeros(hx_type(hm, x), size(x))
     hr = real(hc)
     hi = imag(hc)
-    dphr = Vector{real(ph_eltype(x))}(undef, size(x))
-    dphi = Vector{real(ph_eltype(x))}(undef, size(x))
-    phr  = Vector{real(ph_eltype(x))}(undef, size(x))
-    phi  = Vector{real(ph_eltype(x))}(undef, size(x))
+    dphr = Vector{real(ph_type(x))}(undef, size(x))
+    dphi = Vector{real(ph_type(x))}(undef, size(x))
+    phr  = Vector{real(ph_type(x))}(undef, size(x))
+    phi  = Vector{real(ph_type(x))}(undef, size(x))
     # allocation-free kernel
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(hm)-1
@@ -162,14 +153,14 @@ evalh(hm::AbstractVector{<:AbstractMatrix},x::AbstractArray) = map(y -> evalh(hm
     coeffs hm (an offsetvector), at x, a target or vector of targets.
     Slow reference version.
 """
-function evalhp(hm,x)
-    hp = zero_hx(hm,x)                  # preserves type
+function evalhp(hm,x::Number)
+    hp = zero(hx_type(hm,x))                  # preserves type
     for m in eachindex(hm)
-        hp .+= Ref(hm[m]*im*m) .* exp.(im .* m .* x) # Ref acts as a non-broadcasting wrapper
+        hp += hm[m]*im*m*exp(im*m*x)
     end
     hp
 end
-
+evalhp(hm,x::AbstractArray) = map(y -> evalhp(hm,y), x)
 
 """
     fourier_kernel(C::OffsetVector, x)
@@ -200,18 +191,6 @@ function fourier_kernel(C::Vector, x, myinv=inv)
 end
 
 
-
-# *** continue w/ other evalH faster.. or overload methods w/ same names?
-# ...
-
-
-
-
-
-
-
-
-
 ####### Conventional real-axis quadrature methods...
 
 """
@@ -221,7 +200,7 @@ end
     hm is given by offsetvector of Fourier series. tol controls rtol.
 """
 function realadap(hm,ω,η; tol=1e-8, verb=0)
-    f(x) = tr(inv((ω+im*η) .- evalh(hm,x)))    # integrand func (x can be vec)
+    f(x::Number) = tr(inv(complex(ω,η)*I - evalh(hm,x)))    # integrand func (quadgk gives x a number)
     A,err = quadgk(f,0,2π,rtol=tol)          # can't get more info? # fevals?
     if verb>0
         @printf "\trealadap claimed err=%g\n" err
@@ -238,7 +217,7 @@ end
     By LXVM.
 """
 function realadap_lxvm(hm, ω, η; tol=1e-8, verb=0)
-    f(x) = tr(inv(complex(ω,η) - fourier_kernel(hm,x)))
+    f(x) = tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
     A,err = quadgk(f, 0.0, 2pi, rtol=tol)
     verb>0 && @printf "\trealadap_lxvm claimed err=%g\n" err
     A
