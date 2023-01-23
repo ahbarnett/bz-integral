@@ -27,23 +27,24 @@ Hm = (Hm + reverse(Hmconj))/2                           # H(x) hermitian if x Re
 
 # test eval for x a scalar, vector, real, complex (each an el of tuple)...
 nx = 1000
-xtest = (1.9, [1.3], 2π*rand(nx), 2π*rand(nx)+im*rand(nx))
-for t=1:length(xtest)
+xtest = (1.9, [1.3], 2π*rand(nx), 2π*rand(ComplexF64, nx))
+for (t,x) in enumerate(xtest)
     @printf "scalar evalh variants consistency: test #%d...\n" t
-    local x = xtest[t]
     if t==1
         @printf "\tevalh @ x=%g: " x; println(evalh(hm,x))
     end
-    @printf "evalh chk:          %.3g\n" norm(evalh(hm,x) .- evalh_ref(hm,x),Inf)
-    @printf "evalh_wind chk:     %.3g\n" norm(evalh_wind(hm,x) .- evalh_ref(hm,x),Inf)
-    @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(hm),x) .- evalh_ref(hm,x),Inf)
+    @printf "evalh chk:          %.3g\n" norm(evalh(hm,x) - evalh_ref(hm,x),Inf)
+    @printf "evalh_wind chk:     %.3g\n" norm(evalh_wind(hm,x) - evalh_ref(hm,x),Inf)
+    @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(hm),x) - evalh_ref(hm,x),Inf)
     @printf "matrix evalH variants consistency: test #%d...\n" t
-    H = evalH_ref(Hm,x)
+    H = evalh_ref(Hm,x)
     if t<=2
-        @printf "evalH_ref simply check is Herm: %.3g\n" norm(H-H',Inf)
+        @printf "evalH_ref simply check is Herm: %.3g\n" norm(H - adjoint.(H),Inf)
     end
     # *** matrix evalH tests
-
+    @printf "evalH chk:          %.3g\n" norm(evalh(Hm,x) - evalh_ref(Hm,x),Inf)
+    @printf "evalH_wind chk:     %.3g\n" norm(evalh_wind(Hm,x) - evalh_ref(Hm,x),Inf)
+    @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(Hm),x) - evalh_ref(Hm,x),Inf)
     
 end
 
@@ -52,7 +53,7 @@ end
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
 @printf "\tAa = "; println(Aa)
 @printf "test realadapmat for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
-Aan = realadapmat(Hm,ω,η,tol=tol, verb=1)
+Aan = realadap(Hm,ω,η,tol=tol, verb=1)
 @printf "\tAan = "; println(Aan)
 
 # *** continue with roots via NEVP...
