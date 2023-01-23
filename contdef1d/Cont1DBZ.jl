@@ -199,8 +199,8 @@ end
     use quadgk on Re axis to integrate 1/(ω - h(x) + iη).
     hm is given by offsetvector of Fourier series. tol controls rtol.
 """
-function realadap(hm,ω,η; tol=1e-8, verb=0)
-    f(x::Number) = tr(inv(complex(ω,η)*I - evalh(hm,x)))    # integrand func (quadgk gives x a number)
+function realadap(hm,ω,η; tol=1e-8, verb=0, kernel=evalh)
+    f(x::Number) = tr(inv(complex(ω,η)*I - kernel(hm,x)))    # integrand func (quadgk gives x a number)
     A,err = quadgk(f,0,2π,rtol=tol)          # can't get more info? # fevals?
     if verb>0
         @printf "\trealadap claimed err=%g\n" err
@@ -216,14 +216,7 @@ end
     hm is given by offsetvector of Fourier series. tol controls rtol.
     By LXVM.
 """
-function realadap_lxvm(hm, ω, η; tol=1e-8, verb=0)
-    f(x) = tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
-    A,err = quadgk(f, 0.0, 2pi, rtol=tol)
-    verb>0 && @printf "\trealadap_lxvm claimed err=%g\n" err
-    A
-end
-
-
+realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) = realadap(hm, ω, η; tol=tol, verb=verb, kernel=fourier_kernel)
 
 
 
