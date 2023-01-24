@@ -23,6 +23,7 @@ export
     roots,
     roots_best,
     imshcorr,
+    discresi,
     fourier_kernel,
     realadap_lxvm
 
@@ -263,19 +264,19 @@ function roots_best(a::AbstractVector)    # does not allow dims>1 arrays
     end
 end
 
-# The main showcased method...
+
+######## The main new methods...
 
 """
     A = imshcorr(hm,ω,η;N,s,a,verb)
 
     integrate 1/(ω - h(x) + iη) from 0 to 2π using imag shift PTR contour
     plus residue theorem corrections and pole-subtraction by cotangents.
-    hm is given by offsetvector of Fourier series indices -M:M.
+    hm is given by OffsetVector of Fourier series indices -M:M.
     η may be >0 or =0 (giving lim -> 0+).
-
     h(x) is scalar (n=1) only for now.
 """
-function imshcorr(hm,ω,η; N::Int=20, s=1.0, a=1.0, verb=0)
+function imshcorr(hm::AbstractVector{<:Number},ω,η; N::Int=20, s=1.0, a=1.0, verb=0)
     hmplusc = -hm;                     # was copy(hm) else hmconst changes hm!
     hmplusc[0] += ω+im*η               # F series for denominator
     #M = -hm.offsets[1]-1              # not yet needed
@@ -312,6 +313,37 @@ function imshcorr(hm,ω,η; N::Int=20, s=1.0, a=1.0, verb=0)
         end
         if verb>0
             @printf "\tpole %g+%gi:   \t resthm=%d \t cotcorr=%d\n" real(xr[r]) imx resthm cotcorr
+        end
+    end
+    A
+end
+
+"""
+    A = discresi(hm,ω,η;verb)
+
+    integrate 1/(ω - h(x) + iη) from 0 to 2π using residue theorem for the
+    disc |z|<1 where z = exp(ix).
+    hm is given by OffsetVector of Fourier series coeffs with indices -M:M.
+    η may be >0 or =0 (giving lim -> 0+).
+    h(x) is scalar (n=1) only for now.
+"""
+function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
+    hmplusc = -hm;                     # was copy(hm) else hmconst changes hm!
+    hmplusc[0] += ω+im*η               # F series for denominator
+    hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
+    zr = roots_best(reverse(hmplusc_vec))   # flip to use poly coeff ord
+    A = complex(0.0)                   # CF64
+    for z in zr                        # all z poles (roots of denom)
+        if abs(z)<1.0     # *** need add |z| approx 1 case via deriv chk ***
+            res = -1.0/evalhp(hm,log(z)/im)    # send in x corresp to z
+            A += 2π*im*res
+            if verb>0
+                @printf "\tpole |z|=%.14f ang=%.6f: \tres=%g+%gi\n" abs(z) angle(z) real(res) imag(res)
+            end
+        else
+            if verb>0
+                @printf "\tpole |z|=%.15f ang=%.6f: \tignored\n" abs(z) angle(z)
+            end
         end
     end
     A

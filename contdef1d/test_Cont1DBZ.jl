@@ -49,18 +49,19 @@ for (t,x) in enumerate(xtest)
 end
 
 η=1e-6; ω=0.5; tol=1e-8;
+@printf "\nConventional quadrature:\n"
 @printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
 @printf "\tAa = "; println(Aa)
-@printf "test realadapmat for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
+@printf "test realadap, n=%d (matrix), M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
 Aan = realadap(Hm,ω,η,tol=tol, verb=1)
 @printf "\tAan = "; println(Aan)
 
-# *** continue with roots via NEVP...
+# *** continue with n>1 roots via NEVP...
 
 
 
-@printf "Now test our roots method & the best version (also see bench_roots.jl)...\n"
+@printf "\nTest roots methods (also see bench_roots.jl)...\n"
 @testset "roots" begin
 r = roots([1.0,0,1.0])                # real coeffs case
 @test maximum(abs.(r).-1.0) < 1e-14 && (sort(angle.(r)) ≈ [-pi/2,pi/2])  # +-i
@@ -80,13 +81,22 @@ r = roots_best(complex([1.0,0,1.0]))       # complex case
 @test roots_best([1.0]) == []              # triv case no roots
 #r = roots_best([0.0])                      # seems like can't handle
 end
-    
-# quadr: imag-shifted corrected PTR method...
+
+@printf "\nNew quadrature methods, scalar case... (for above params)\n"
+# imag-shifted quadr corrected PTR quadr method...
 NPTR=30
 Ac = imshcorr(hm,ω,η,N=NPTR, verb=0)         # a=1 so Davis exp(-aN) ~ 1e-13
-#println(Ac,' ',Aa)
+#println(Ac," ",Aa)
 @printf "test imshcorr, N_PTR=%d:   \t|Ac-Aa| = %.3g    (don't trust below claimed err)\n" NPTR abs(Ac-Aa)
-# known band struc case with eta=0+
+
+# disc residue thm method...
+Ad = discresi(hm,ω,η,verb=0)
+#println(Ad,"    ",Aa,"   ratio:",Ad/Aa)   # for eyeball ratio-fixing :)
+@printf "test discresi:\t\t\t|Ad-Aa| = %.3g    (don't trust below claimed err)\n" abs(Ad-Aa)
+
+
+# known band struc case with eta=0+: imshcorr...
+@printf "\nNew quadrature methods at eta=0, scalar case...\n"
 M=1; hm = OffsetVector(complex([1/2,0,1/2]),-M:M)    # h(x)=cos(x), band [-1,1]
 ωs=[-1.6, -0.3, 0.9, 1.3, 1.9]          # below, thru, above band
 η=0.0
