@@ -19,9 +19,7 @@ export
     evalh_wind,
     evalh,
     evalhp,
-    evalH_ref,
     realadap,
-    realadapmat,
     roots,
     roots_best,
     imshcorr,
@@ -33,7 +31,7 @@ export
     ph_type(x)
 
 Helper function that returns the type of output needed to store the values of
-Fourier coefficients.
+Fourier coefficients (or 'ph'ase)
 
 By LXVM
 """
@@ -43,7 +41,7 @@ ph_type(x) = Base.promote_op(cis, eltype(x))
     hx_type(hm, x)
 
 Helper function that returns the type of output needed to store the result of a
-Fourier series.
+Fourier series, eg h(x)
 
 By LXVM
 """

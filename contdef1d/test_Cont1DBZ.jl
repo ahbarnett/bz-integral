@@ -29,21 +29,21 @@ Hm = (Hm + reverse(Hmconj))/2                           # H(x) hermitian if x Re
 nx = 1000
 xtest = (1.9, [1.3], 2π*rand(nx), 2π*rand(ComplexF64, nx))
 for (t,x) in enumerate(xtest)
-    @printf "scalar evalh variants consistency: test #%d...\n" t
+    @printf "scalar evalh variants consistency: test #%dS...\n" t
     if t==1
         @printf "\tevalh @ x=%g: " x; println(evalh(hm,x))
     end
     @printf "evalh chk:          %.3g\n" norm(evalh(hm,x) - evalh_ref(hm,x),Inf)
     @printf "evalh_wind chk:     %.3g\n" norm(evalh_wind(hm,x) - evalh_ref(hm,x),Inf)
     @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(hm),x) - evalh_ref(hm,x),Inf)
-    @printf "matrix evalH variants consistency: test #%d...\n" t
+    @printf "matrix evalh variants consistency: test #%dM...\n" t
     H = evalh_ref(Hm,x)
     if t<=2
-        @printf "evalH_ref simply check is Herm: %.3g\n" norm(H - adjoint.(H),Inf)
+        @printf "evalh_ref simply check is Herm: %.3g\n" norm(H - H',Inf)
     end
     # *** matrix evalH tests
-    @printf "evalH chk:          %.3g\n" norm(evalh(Hm,x) - evalh_ref(Hm,x),Inf)
-    @printf "evalH_wind chk:     %.3g\n" norm(evalh_wind(Hm,x) - evalh_ref(Hm,x),Inf)
+    @printf "evalh chk:          %.3g\n" norm(evalh(Hm,x) - evalh_ref(Hm,x),Inf)
+    @printf "evalh_wind chk:     %.3g\n" norm(evalh_wind(Hm,x) - evalh_ref(Hm,x),Inf)
     @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(Hm),x) - evalh_ref(Hm,x),Inf)
     
 end
