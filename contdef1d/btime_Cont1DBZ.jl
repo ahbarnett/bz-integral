@@ -17,9 +17,10 @@ x = 2π*rand(1000)
 η=1e-6; ω=0.5; tol=1e-8;
 NPTR=30
 
-for M = [8,32,128]   # M=1 is silly here
+for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})   # M=1 is silly here
+    println(T)
     @printf "\nbench Cont1DBZ with M=%d.\n\tEval at %d targs...\n" M length(x)
-    local hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # h(x)
+    local hm = OffsetVector(randn(T,2M+1),-M:M)      # h(x)
     local hm = (hm + conj(reverse(hm)))/2                     # make h(x) real
     @printf "evalh_ref:\t"
     @btime evalh_ref($hm,$x)
@@ -31,6 +32,7 @@ for M = [8,32,128]   # M=1 is silly here
     @printf "evalh %g G mode-targs/sec\n" (2M+1)*length(x)/t_ns
     @printf "fourier_kernel:    \t"
     @btime map(x -> fourier_kernel($hm,x), $x)
+    T<:Number || continue # for now skip root-finding for matrix coefficients
     
     @printf "\tQuadr meths:\nrealadap ω=%g η=%g tol=%g:  " ω η tol
     @btime realadap($hm,ω,η,tol=tol)
