@@ -90,7 +90,7 @@ Ac = imshcorr(hm,ω,η,N=NPTR, verb=0)         # a=1 so Davis exp(-aN) ~ 1e-13
 @printf "test imshcorr, N_PTR=%d:   \t|Ac-Aa| = %.3g    (don't trust below claimed err)\n" NPTR abs(Ac-Aa)
 
 # disc residue thm method...
-Ad = discresi(hm,ω,η,verb=0)
+Ad = discresi(hm,ω,η,verb=1)
 #println(Ad,"    ",Aa,"   ratio:",Ad/Aa)   # for eyeball ratio-fixing :)
 @printf "test discresi:\t\t\t|Ad-Aa| = %.3g    (don't trust below claimed err)\n" abs(Ad-Aa)
 

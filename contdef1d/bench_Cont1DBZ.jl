@@ -44,8 +44,9 @@ for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,Com
             A = TIME(realadap)(hm,ω,η,tol=tol)
             AL = TIME(realadap_lxvm)(hm,ω,η,tol=tol)
             AI = @timeit TIME @sprintf("imshcorr(NPTR=%d)",NPTR) imshcorr(hm,ω,η,N=NPTR)
+            AD = TIME(discresi)(hm,ω,η)
         end
-        println(A,'\n',AL,'\n',AI)   # check integrals match
+        println(A,'\n',AL,'\n',AI,'\n',AD)   # eyeball integrals match
     end
     end
 end

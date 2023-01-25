@@ -1,14 +1,13 @@
-# benchmark 1D BZ module. Barnett 12/26/22
+# benchmark 1D BZ module, via BenchmarkTools.jl, which is annoyingly slow
+# Barnett 12/26/22. Also see bench_Cont1DBZ.jl
 
 push!(LOAD_PATH,".")
 using Cont1DBZ
 using OffsetArrays
 using Printf
 
-#using TimerOutputs
-# *** to do ... get away from @btime
 using BenchmarkTools
-BenchmarkTools.DEFAULT_PARAMETERS.seconds = 0.1  # for btime only (<0.1 no help)
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 0.1  # for btime only, and not true
 
 using LinearAlgebra
 BLAS.set_num_threads(1)       # linalg single-thread for fairness
@@ -17,9 +16,10 @@ x = 2π*rand(1000)
 η=1e-6; ω=0.5; tol=1e-8;
 NPTR=30
 
-for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})   # M=1 is silly here
-    println(T)
-    @printf "\nbench Cont1DBZ with M=%d.\n\tEval at %d targs...\n" M length(x)
+# double loop over scalar and matrix types (inner), F series lengths (outer):
+for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})
+    @printf "\nbench Cont1DBZ with M=%d, of type " M; println(T," :\n")
+    @printf "Eval at %d targs...\n" length(x)
     local hm = OffsetVector(randn(T,2M+1),-M:M)      # h(x)
     local hm = (hm + conj(reverse(hm)))/2                     # make h(x) real
     @printf "evalh_ref:\t"
@@ -46,4 +46,6 @@ for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,Com
     @btime roots_best($coeffs)
     @printf "imshcorr same ω and η as above, NPTR=%d:   " NPTR
     @btime imshcorr($hm,ω,η,N=NPTR)
+    @printf "discresi same ω and η as above:            "
+    @btime discresi($hm,ω,η)
 end

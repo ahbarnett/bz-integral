@@ -337,13 +337,9 @@ function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
         if abs(z)<1.0     # *** need add |z| approx 1 case via deriv chk ***
             res = -1.0/evalhp(hm,log(z)/im)    # send in x corresp to z
             A += 2π*im*res
-            if verb>0
-                @printf "\tpole |z|=%.14f ang=%.6f: \tres=%g+%gi\n" abs(z) angle(z) real(res) imag(res)
-            end
-        else
-            if verb>0
-                @printf "\tpole |z|=%.15f ang=%.6f: \tignored\n" abs(z) angle(z)
-            end
+            verb==0 || @printf "\tpole |z|=%.14f ang=%.6f: \tres=%g+%gi\n" abs(z) angle(z) real(res) imag(res)
+        elseif verb>0
+            @printf "\tpole |z|=%.15f ang=%.6f: \tignored\n" abs(z) angle(z)
         end
     end
     A
