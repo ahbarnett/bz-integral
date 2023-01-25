@@ -7,6 +7,9 @@
 \topmargin -0.5in
 
 \usepackage{graphicx,bm,amssymb,amsmath,amsthm}
+
+\usepackage{showlabels}
+
 \newcommand{\bi}{\begin{itemize}}
 \newcommand{\ei}{\end{itemize}}
 \newcommand{\ben}{\begin{enumerate}}
@@ -68,16 +71,18 @@
   This accompanies Julia benchmarking code in \texttt{contdef1d}.
 \end{abstract}
 
+Consider a crystalline quantum system with band Hamiltonian $H(k)$.
 Let $k$ denote the $2\pi$-periodic wavevector (a scalar since we are in 1D), and
 the Brillouin zone we may take as any periodic interval, eg, $[0,2\pi)$.
-We are given a band Hamiltonian function $H(k)$ in the form of a finite Fourier
+We are given the band Hamiltonian function in the form of a finite Fourier
 series
 \be
 H(k) = \sum_{m=-M}^M H_m e^{imk}
 \label{Hk}
 \ee
-which has $2M+1$ terms. $H$ and each $H_m$ are matrices of size $n$,
-and we refer to the case $n=1$ as scalar.
+which has $2M+1$ terms. $H$ and each $H_m$ are matrices of size $n$
+(given in some Wannier basis that we need not be concerned about here).
+We refer to the case $n=1$ as scalar.
 For CCQ applications, $n$ is not large.
 In the application, $H(k)$ is self-adjoint for all $k\in\R$,
 equivalent to the symmetry $H_m^* = H_{-m}$ for all $m$, where
@@ -86,16 +91,20 @@ $^*$ indicates the complex transpose (Hermitian conjugate).
 Given $M$, $\{H_m\}$ as above, $\om\in \R$, and $\eta\ge0$,
 the paradigm integration task is to evaluate
 \be
-A = A_{\om,\eta} := \int_{0}^{2\pi} \tr\, [(\om +i\eta)I - H(k)]^{-1} dk
+A = A(\om,\eta) := \int_{0}^{2\pi} \tr\, [(\om +i\eta)I - H(k)]^{-1} dk
 \label{A}
 \ee
 The inverse may be interpreted as a Green's function, and $\eta$
-as a broadening due to temperature, disorder, interactions, etc.
-Usually $\im A$ is taken which gives the density of states at energy $\om$
-for a periodic quantum system with band Hamiltonian $H(k)$.
-This is a simple case of constant matrix $(\om+i\eta)I$; it could
-be a more general non-Hermitian matrix often denoted by
-$\Sigma_\om$, but remains independent of $k$.
+a possible broadening due to temperature, disorder, interactions, etc.
+The density of states at energy $\om$ is then
+\be
+\rho(\om) = -\frac{1}{\pi}\im A(\om,\eta)~.
+\label{DOS}
+\ee
+% *** Tr and Im commute, but conceptuially shoudl the Tr be outermost?
+The above is the simple case of constant matrix $(\om+i\eta)I$; this
+can be a more general non-Hermitian matrix often denoted by
+$\Sigma_\om$, still independent of $k$.
 % although if not, that would just modify the F series coeffs for H.
 
 The ``conventional'' numerical method for \eqref{A} is
@@ -186,7 +195,12 @@ where each residue can be evaluated by
 \label{res}
 \ee
 where $\tH'$ is the complex derivative of the Laurent series \eqref{tH}.
-Since $iz\tH'(z) = H'(i^{-1}\log z)$, the residue can
+Since
+\be
+iz\tH'(z) = H'(i^{-1}\log z),
+\label{deriv}
+\ee
+the residue can
 also be written
 \be
 \res_{z_j} f  = \frac{-1}{H'(i^{-1}\log z_j)}
@@ -194,20 +208,64 @@ also be written
 in terms of the complex wavevector derivative $H'$ of the original band
 Hamiltonian \eqref{Hk}.
 
-For the case $\eta\to0^+$,
-***
-FINISH.
-
-Finally, the roots of the denominator $\om + i\eta - \tH(z)$
+Numerically, the roots of the denominator $\om + i\eta - \tH(z)$
 are found by noting that
 $$
 z^M(\om + i\eta - \tH(z))
 $$
-is a 
+is a polynomial of degree $2M$ with coefficients
+$a_j = (\om+i\eta)\delta_{jM} - H_{j-M}$ for $j=0,1,\dots,2M$.
+One finds its roots by either the companion matrix
+eigenvalues or iterative deflation with Laguerre's method.
+Currently we use an $\bigO(M^2)$ scaling fast implementation of the former
+(\cite{aurentz1,aurentz2} as coded in \texttt{AMRVW.jl})
+for degrees greater than 200, else the
+latter (\cite{skowron} as coded in \texttt{PolynomialRoots.jl}).
+The latter is around 10 times faster for the same degree, but
+appears unstable for degrees above about 200.
+
+Finally we consider
+the case $\eta\to0^+$: the denominator then often has roots lying on $|z|=1$,
+corresponding to real band intersections (Fermi ``points'')
+$k$ where $H(k)=\om$.
+Only some of the corresponding poles in the integrand $f(z)$ of \eqref{f}
+should be included in the residue theorem.
+Denominator roots whose location approaches the unit circle from the inside
+are included, otherwise they are excluded.
+Writing $z_0(\eta)$ for the $\eta$-dependence of such a root,
+taking the total $\eta$-derivative of $(\om+i\eta)-\tH(z_0(\eta)) = 0$.
+gives $z_0' = dz_0/d\eta = i/\tH'(z_0)$.
+Approaching from the inside means $\re z_0' \overline{z_0}<0$, recalling
+that $\eta$ is decreasing to $0$.
+Substituting $z_0'$ gives the criterion for inclusion
+$\re i \overline{z_0}/\tH'(z_0) <0$, or, using \eqref{deriv},
+$$
+\re H'(k_0) > 0,
+$$
+where $k_0 = i^{-1} \log z_0$ is the real-valued wavevector corresponding to
+the unit circle root $z_0$, and $z_0\overline{z_0} = 1$ was used.
+This has a simple interpretation that only up-going bands should be included
+(since
+
+A good check for the sign is the simple test case band structure
+$H(k) = \cos k$, whose only nonzero coefficients are $H_{\pm1} = 1/2$,
+for which the exact DOS is easily found by change of variable,
+$$
+\rho(\om) = \int_0^{2\pi} \delta(H(k)-\om) dk
+= \sum_{k\in[0,2\pi]: H(k)=\om} \frac{1}{|H'(k)|}
+= \frac{2}{\sin(\cos^{-1} \om)} = \frac{2}{\sqrt{1-\om^2}}
+$$
+in the band $|\om|<1$, or zero when $|\om|>1$.
+The 1D Van Hove singularity is undefined at the band edge $\om=\pm1$.
+
+We implement the scalar case for $\eta>0$ and $\eta=0^+$
+by the method \texttt{discresi} in \texttt{Cont1DBZ}.
 
 
-This scalar case is implemented by the method \texttt{discresi} in
-\texttt{Cont1DBZ}.
+
+*** Need to discuss/research/test: nonsimple poles inside, and on unit circle
+for $\eta=0^+$.
+
 
 
 
@@ -221,6 +279,6 @@ This scalar case is implemented by the method \texttt{discresi} in
 
 
 \bibliographystyle{abbrv}
-\bibliography{autobz}
+\bibliography{refs}
 
 \end{document}
