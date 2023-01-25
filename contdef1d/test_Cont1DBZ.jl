@@ -49,7 +49,7 @@ for (t,x) in enumerate(xtest)
 end
 
 η=1e-6; ω=0.5; tol=1e-8;
-@printf "\nConventional quadrature:\n"
+@printf "\nConventional quadrature (eta>0, obvi):\n"
 @printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
 @printf "\tAa = "; println(Aa)
@@ -90,21 +90,22 @@ Ac = imshcorr(hm,ω,η,N=NPTR, verb=0)         # a=1 so Davis exp(-aN) ~ 1e-13
 @printf "test imshcorr, N_PTR=%d:   \t|Ac-Aa| = %.3g    (don't trust below claimed err)\n" NPTR abs(Ac-Aa)
 
 # disc residue thm method...
-Ad = discresi(hm,ω,η,verb=1)
+Ad = discresi(hm,ω,η,verb=0)
 #println(Ad,"    ",Aa,"   ratio:",Ad/Aa)   # for eyeball ratio-fixing :)
 @printf "test discresi:\t\t\t|Ad-Aa| = %.3g    (don't trust below claimed err)\n" abs(Ad-Aa)
 
 
 # known band struc case with eta=0+: imshcorr...
-@printf "\nNew quadrature methods at eta=0, scalar case...\n"
+@printf "\nNew quadrature methods at eta=0+, scalar case...\n"
 M=1; hm = OffsetVector(complex([1/2,0,1/2]),-M:M)    # h(x)=cos(x), band [-1,1]
+η=0.0   # poss to check eta>0 against below exact DOS form w O(eta) error too
 ωs=[-1.6, -0.3, 0.9, 1.3, 1.9]          # below, thru, above band
-η=0.0
 for ω in ωs
-    local Ac = imag(imshcorr(hm,ω,η,N=NPTR))   # Im for DOS
-    Aanal = abs(ω)<1 ? 2π/sqrt(1-ω^2) : 0.0    # formula; DOS=0 outside band
-    #println(Ac,' ',Aa)
-    @printf "η=0+ Im test ω=%g:     \t|Ac-Aanal| = %.3g\n" ω abs(Ac-Aanal)
+    DOS = abs(ω)<1 ? 2/sqrt(1-ω^2) : 0.0    # exact form; DOS=0 outside band
+    local DOSc = (-1/π)*imag(imshcorr(hm,ω,η,N=NPTR))   # -Im(A)/pi for DOS
+    local DOSd = (-1/π)*imag(discresi(hm,ω,η, verb=0))
+#    println("DOS=",DOS,", DOSc=",DOSc,", DOSd=",DOSd)  # debug
+    @printf "η=0+ Im test ω=%g:     \tDOSc err = %.3g          \tDOSd err = %.3g\n" ω DOSc-DOS DOSd-DOS
 end
 
 # ------------ end module tests---------------

@@ -124,8 +124,8 @@ function evalh(hm::AbstractVector{<:Number},x::AbstractArray)
     mmin = 1+hm.offsets[1]       # get start & stop freq indices
     mmax = mmin+length(hm)-1
     for (i, e) in enumerate(x)
-        phr[i], phi[i] = reim(cis(mmin*e))          # starting phase (don't assume x real)
-        dphr[i], dphi[i] = reim(cis(e))             # phase to wind by (don't assume x real)
+        phr[i], phi[i] = reim(cis(mmin*e))          # starting phase
+        dphr[i], dphi[i] = reim(cis(e))             # phase to wind by
     end
     for m=mmin:mmax             # this loop must be sequential
         hmr, hmi = reim(hm[m])
@@ -229,7 +229,7 @@ realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) = realadap(hm, ω, η; tol=tol, verb
     Note poly coeffs are in reverse order that in many Julia pkgs.
     If the entire C plane is a root, returns [complex(NaN)].
 """
-function roots(a::AbstractVector)    # does not allow dims>1 arrays
+function roots(a::AbstractVector{<:Number})    # does not allow dims>1 arrays
     a = complex(a)          # idempotent, unlike Complex{T} for T a type...
     T = eltype(a)
     while length(a)>1 && a[1]==0.0         # gobble up any zero leading coeffs
@@ -284,7 +284,7 @@ function imshcorr(hm::AbstractVector{<:Number},ω,η; N::Int=20, s=1.0, a=1.0, v
     zr = roots_best(reverse(hmplusc_vec))   # flip to use poly coeff ord
     xr = @. log(zr)/im                 # solve z = e^{ix} for roots x of denom
     xr = @. mod(real(xr),2π) + im*imag(xr)    # fold Re to [0,2π), for humans
-    dpxr = evalhp(hmplusc,xr)          # denom' (= -h') at all roots
+    dpxr = evalhp(hmplusc,xr)          # denom' (= -h', note sign) at all roots
     
     eps = 1e-13    # dist from Re axis considered real when η=0
     # *** todo choose N,s,a via M, xr (eg s staying >1e-3 from all imag(xr))
@@ -299,7 +299,7 @@ function imshcorr(hm::AbstractVector{<:Number},ω,η; N::Int=20, s=1.0, a=1.0, v
         imx = imag(xr[r])
         resthm = (0.0 < imx < s)
         if η==0.0 && abs(imx)<eps      # update whether to apply residue thm
-            resthm = (real(dpxr[r]) > 0.0)     # so eta->0+ gives Re pole ->0+
+            resthm = (real(dpxr[r]) < 0.0)     # so eta->0+ gives Im x_r ->0+
         end
         res = 1.0 ./ dpxr[r]           # Res of f = 1/denom'(x_r)
         A = A + 2π*im * res * resthm
@@ -321,10 +321,10 @@ end
 """
     A = discresi(hm,ω,η;verb)
 
-    integrate 1/(ω - h(x) + iη) from 0 to 2π using residue theorem for the
+    integrate 1/(ω - h(x) + iη) from 0 to 2π using residue theorem in the
     disc |z|<1 where z = exp(ix).
     hm is given by OffsetVector of Fourier series coeffs with indices -M:M.
-    η may be >0 or =0 (giving lim -> 0+).
+    η may be >0 or =0 (which gives lim -> 0+).
     h(x) is scalar (n=1) only for now.
 """
 function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
@@ -332,14 +332,25 @@ function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
     hmplusc[0] += ω+im*η               # F series for denominator
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     zr = roots_best(reverse(hmplusc_vec))   # flip to use poly coeff ord
+    UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64
     for z in zr                        # all z poles (roots of denom)
-        if abs(z)<1.0     # *** need add |z| approx 1 case via deriv chk ***
-            res = -1.0/evalhp(hm,log(z)/im)    # send in x corresp to z
-            A += 2π*im*res
-            verb==0 || @printf "\tpole |z|=%.14f ang=%.6f: \tres=%g+%gi\n" abs(z) angle(z) real(res) imag(res)
-        elseif verb>0
-            @printf "\tpole |z|=%.15f ang=%.6f: \tignored\n" abs(z) angle(z)
+        verb==0 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
+        if abs(z)>1.0+UCdist           # outside
+            verb==0 || @printf "\texclude\n"
+        elseif abs(z)<=1.0-UCdist      # inside, include
+            res = -1.0/evalhp(hm,log(z)/im)    # residue, use x corresp to z
+            A += 2π*im*res             # the residue thm
+            verb==0 || @printf "\tres=%g+%gi\n" real(res) imag(res)
+        else                           # handle on (eps-close to) unit circ
+            hp = evalhp(hm,log(z)/im)
+            if real(hp)<0.0            # pole approach from outside as eta->0
+                verb==0 || @printf "UC\texclude\n"
+            else                       # include
+                res = -1.0/hp          # same residue formula as above
+                A += 2π*im*res
+                verb==0 || @printf "UC\tres=%g+%gi\n" real(res) imag(res)
+            end
         end
     end
     A
