@@ -233,10 +233,11 @@ should be included in the residue theorem.
 Denominator roots whose location approaches the unit circle from the inside
 are included, otherwise they are excluded.
 Writing $z_0(\eta)$ for the $\eta$-dependence of such a root,
-taking the total $\eta$-derivative of $(\om+i\eta)-\tH(z_0(\eta)) = 0$.
-gives $z_0' = dz_0/d\eta = i/\tH'(z_0)$.
-Approaching from the inside means $\re z_0' \overline{z_0}<0$, recalling
-that $\eta$ is decreasing to $0$.
+taking the total $\eta$-derivative of $(\om+i\eta)-\tH(z_0(\eta)) = 0$
+gives a formula $z_0' = dz_0/d\eta = i/\tH'(z_0)$.
+Approaching from the inside means geometrically
+$\re z_0' \overline{z_0}<0$, recalling
+that $\eta$ is \textit{decreasing} to $0$.
 Substituting $z_0'$ gives the criterion for inclusion
 $\re i \overline{z_0}/\tH'(z_0) <0$, or, using \eqref{deriv},
 $$
@@ -244,18 +245,20 @@ $$
 $$
 where $k_0 = i^{-1} \log z_0$ is the real-valued wavevector corresponding to
 the unit circle root $z_0$, and $z_0\overline{z_0} = 1$ was used.
-This has a simple interpretation that only up-going bands should be included
-(since
+This has a simple interpretation that only up-going band intersections
+should be included (where pushing $\om$ into a small imaginary
+part causes the intersection to move up from the real axis, and its
+image inside the unit circle).
 
-A good check for the sign is the simple test case band structure
+A good numerical check for the sign is the simple test case band structure
 $H(k) = \cos k$, whose only nonzero coefficients are $H_{\pm1} = 1/2$,
-for which the exact DOS is easily found by change of variable,
+for which the exact (positive!) DOS is easily found by change of variable,
 $$
 \rho(\om) = \int_0^{2\pi} \delta(H(k)-\om) dk
 = \sum_{k\in[0,2\pi]: H(k)=\om} \frac{1}{|H'(k)|}
 = \frac{2}{\sin(\cos^{-1} \om)} = \frac{2}{\sqrt{1-\om^2}}
 $$
-in the band $|\om|<1$, or zero when $|\om|>1$.
+in the band $|\om|<1$, and zero for $|\om|>1$.
 The 1D Van Hove singularity is undefined at the band edge $\om=\pm1$.
 
 We implement the scalar case for $\eta>0$ and $\eta=0^+$
