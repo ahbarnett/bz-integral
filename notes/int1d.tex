@@ -164,11 +164,12 @@ $H_m\neq 0$ for some $m<0$ (keeping in mind Hermitian symmetry).
 The first case is trivial, so from now we deal with the second case.
 Although $f$ is not defined at $z=0$ by the above, the following shows that
 it may be extended to this point to give a locally analytic function.
-\begin{pro}
+\begin{pro}  % ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
+  \label{p:originok}
   Let $H$ be a non-constant Fourier series \eqref{Hk}, then
   the integrand $f$ defined by \eqref{f}, where $\tH$ is defined by
   \eqref{tH}, has a removable singularity at $z=0$.
-\end{pro}
+\end{pro}   % ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
 \begin{proof}
   Let $p \in \{1,2, \dots, M\}$
   be the largest index $m$ for which $H_{-m} \neq 0$.
@@ -187,7 +188,7 @@ Thus, when $\eta>0$, so that no zero of $\om + i\eta - \tH(z)$ can lie
 on the unit circle, poles lie either inside or outside of this circle.
 Assuming all poles are simple,
 \be
-A = \int_{|z|=1} f(z) dz = 2\pi \sum_{|z_j|<1} \res_{z_j} f
+A = \int_{|z|=1} f(z) dz = 2\pi i \sum_{|z_j|<1} \res_{z_j} f
 \ee
 where each residue can be evaluated by
 \be
@@ -215,6 +216,7 @@ z^M(\om + i\eta - \tH(z))
 $$
 is a polynomial of degree $2M$ with coefficients
 $a_j = (\om+i\eta)\delta_{jM} - H_{j-M}$ for $j=0,1,\dots,2M$.
+This trick is due to J.\ Boyd in the context of root-finding.
 One finds its roots by either the companion matrix
 eigenvalues or iterative deflation with Laguerre's method.
 Currently we use an $\bigO(M^2)$ scaling fast implementation of the former
@@ -239,12 +241,13 @@ Approaching from the inside means geometrically
 $\re z_0' \overline{z_0}<0$, recalling
 that $\eta$ is \textit{decreasing} to $0$.
 Substituting $z_0'$ gives the criterion for inclusion
-$\re i \overline{z_0}/\tH'(z_0) <0$, or, using \eqref{deriv},
+$\re i \overline{z_0}/\tH'(z_0) <0$, or, using \eqref{deriv}
+and $z_0\overline{z_0} = 1$,
 $$
 \re H'(k_0) > 0,
 $$
 where $k_0 = i^{-1} \log z_0$ is the real-valued wavevector corresponding to
-the unit circle root $z_0$, and $z_0\overline{z_0} = 1$ was used.
+the unit circle root $z_0$.
 This has a simple interpretation that only up-going band intersections
 should be included (where pushing $\om$ into a small imaginary
 part causes the intersection to move up from the real axis, and its
@@ -277,6 +280,54 @@ for $\eta=0^+$.
 
 % Beyn 2012 LAA, Sec 2 reviews Keldysh.
 
+The main tool is the matrix version of the residue theorem,
+summarized in \cite[Thm.~2.9]{beyn12}.
+Let $\Omega \subset \C$ be open, and let
+$B: \Omega \to \C^{n\times n}$ be an analytic matrix-valued function.
+The nonlinear eigenvalues of $B$ in $\Omega$ are the distinct
+countable $z_j\in\Omega$, $j=1,\dots,J$, such that
+$B(z_J)v_j = 0$ for each nontrivial (right) eigenvector $v_j\in\C^n$.
+Each also has a left eigenvector $u_j$ such that $u_j^*B(z_j) = 0$.
+We leave their normalization free.
+Then, in the case of all eigenvalues simple and none lying on $\partial\Omega$,
+\be
+\int_{\partial\Omega} B(z)^{-1} dz =
+2\pi i \sum_{j=1}^J \res_{z_j} B^{-1},
+\qquad \mbox{ where }
+\quad
+\res_{z_j} B^{-1} := \lim_{z\to z_j} (z-z_j)B(z)^{-1} = \frac{v_j u_j^*}{u_j^* B'(z_j) v_j}~,
+\label{resmat}
+\ee
+where as usual $B'=dB/dz$.
+Note that the definition of the residue is identical
+to \eqref{res} replacing $f$ by the matrix-valued meromorphic
+function $B^{-1}$; each residue is a rank-1 matrix,
+with a derivative in the denominator as in \eqref{res}.
+The nonsimple case relating the higher order pole
+coefficients to the generalized eigenvectors of $F(z)$
+is more complicated and due to Keldysh, Gohberg \cite{gohberg}, etc.
+For now we assume all eigenvalues are simple.
+
+We apply this Keldysh residue theorem to
+$$
+B(z) = iz[(\om+i\eta)I - \tH(z)],
+$$
+since \eqref{A}, after changing to $z=e^{ik}$, is then
+$$
+A = \int_{|z|=1} B(z)^{-1} dz.
+$$
+By analogy with Prop.~\ref{p:originok}, for a non-constant $\tH(z)$, $B^{-1}$
+is holomorphic at the origin (*** this should be fleshed out).
+
+The steps are:
+i) find all nonlinear eigenvalues $z_j$ lying in the unit disc
+for the polynomial $z^MA(z)$,
+which is a polynomial eigenvalue problem (PEP);
+ii) extract all right and left eigenvectors and $B'$ at each eigenvalue;
+iii) compute all residues (at this point $\tr$ may be taken);
+iv) sum as in \eqref{resmat}.
+For the case $\eta=0^+$, any eigenvalues on the unit circle
+but which lay in the unit disc for $\eta>0$ must be appended to the list.
 
 
 
