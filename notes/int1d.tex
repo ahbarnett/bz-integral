@@ -217,8 +217,9 @@ z^M(\om + i\eta - \tH(z)),
 $$
 a polynomial of degree $2M$ with coefficients
 $a_j = (\om+i\eta)\delta_{jM} - H_{j-M}$ for $j=0,1,\dots,2M$.
-This ``Laurent to polynomial'' conversion
-trick is due to J.\ Boyd in the context of root-finding.
+This ``Laurent to Taylor'' conversion
+trick is due to J.\ Boyd in the context of root-finding and used in, eg,
+Chebfun.
 One finds its roots by either the companion matrix
 eigenvalues or iterative deflation with Laguerre's method.
 Currently we use an $\bigO(M^2)$ scaling fast implementation of the former
@@ -283,7 +284,7 @@ for $\eta=0^+$.
 % mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
 \section{Residue method for the matrix case $n>1$}
 
-% Beyn 2012 LAA, Sec 2 reviews Keldysh.
+% Beyn 2012 LAA, Sec 2 reviews Keldysh. *** need better math cites
 
 The main tool is the matrix version of the residue theorem,
 summarized in \cite[Thm.~2.9]{beyn12}.
@@ -291,19 +292,22 @@ Let $\Omega \subset \C$ be open, and let
 $B: \Omega \to \C^{n\times n}$ be an analytic matrix-valued function.
 The nonlinear eigenvalues of $B$ in $\Omega$ are the distinct
 countable $z_j\in\Omega$, $j=1,\dots,J$, such that
-$B(z_J)v_j = 0$ for each nontrivial (right) eigenvector $v_j\in\C^n$.
+$B(z_j)v_j = 0$ for each nontrivial (right) eigenvector $v_j\in\C^n$.
 Each also has a left eigenvector $u_j$ such that $u_j^*B(z_j) = 0$.
 We leave their normalization free.
 Then, in the case of all eigenvalues simple and none lying on $\partial\Omega$,
 \be
 \int_{\partial\Omega} B(z)^{-1} dz =
 2\pi i \sum_{j=1}^J \res_{z_j} B^{-1},
-\qquad \mbox{ where }
+\quad \mbox{ where }
 \quad
-\res_{z_j} B^{-1} := \lim_{z\to z_j} (z-z_j)B(z)^{-1} = \frac{v_j u_j^*}{u_j^* B'(z_j) v_j}~,
+\res_{z_j} B^{-1} := \lim_{z\to z_j} (z-z_j)B(z)^{-1}
+= \frac{v_j u_j^*}{u_j^* B'(z_j) v_j},
 \label{resmat}
 \ee
 where as usual $B'=dB/dz$.
+This is an analytic generalization of the spectral projector for the linear
+case $B(z) = B_0 + B_1z$.
 Note that the definition of the residue is identical
 to \eqref{res} replacing $f$ by the matrix-valued meromorphic
 function $B^{-1}$; each residue is a rank-1 matrix,

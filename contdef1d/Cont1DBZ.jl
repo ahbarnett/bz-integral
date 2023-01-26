@@ -11,6 +11,7 @@ using LinearAlgebra
 using Printf
 using AMRVW               # roots in O(N^2)
 using PolynomialRoots     # low-order faster roots
+using NonlinearEigenproblems   # n>1 matrix case
 
 using LoopVectorization    # experimental
 
@@ -228,6 +229,8 @@ realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) = realadap(hm, ω, η; tol=tol, verb
     via companion matrix EVP in O(n^3) time. Similar to MATLAB roots.
     Note poly coeffs are in reverse order that in many Julia pkgs.
     If the entire C plane is a root, returns [complex(NaN)].
+
+    Local reference implementation; superceded by other pkgs.
 """
 function roots(a::AbstractVector{<:Number})    # does not allow dims>1 arrays
     a = complex(a)          # idempotent, unlike Complex{T} for T a type...
@@ -256,13 +259,21 @@ end
     using a wrapper to a (supposedly) optimal choice of method.
     Same interface as MATLAB roots, and roots().
 """
-function roots_best(a::AbstractVector)    # does not allow dims>1 arrays
+function roots_best(a::AbstractVector{<:Number})  # does not allow dims>1 arrays
     if length(a)<220              # we're pushing it, may die in acc for >200
         PolynomialRoots.roots(reverse(a))
     else              # stable O(M^2) but not quite as fast
         AMRVW.roots(reverse(a))
     end
 end
+
+
+#function roots_best(a::AbstractVector{<:AbstractMatrix})
+#    deg=length(a)-1     # degree
+#    n = size(a[1],1)    # dimension (matrix size)
+# eval det at real nodes, FFT to coeffs, send to roots_best for Numbers.
+#end
+# *** drop this for now
 
 
 ######## The main new methods...
@@ -357,5 +368,47 @@ function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
     end
     A
 end
+
+"""
+    A = discresi(hm,ω,η;verb)        ...matrix (n>1) version
+
+    integrate 1/(ω - h(x) + iη) from 0 to 2π using Keldysh residue theorem in
+    the disc |z|<1 where z = exp(ix).
+    hm is given by OffsetVector of matrix-valued Fourier series coeffs with
+    indices -M:M.
+    η must be >0 for now.
+"""
+function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
+    M = (length(hm)-1)/2
+    n = size(hm[0],1)                  # dimension (matrix size)
+    hmplusc = -hm;
+    hmplusc[0] += I*(ω+im*η)           # F series for denominator
+    hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
+    pep = PEP(Matrix.(hmplusc_vec))    # set up PEP; SMatrix -> plain Matrix
+    λ, V = polyeig(pep)               # V is n*J stack of right evecs
+    
+    UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
+    A = complex(0.0)                   # CF64
+    for (j,z) in enumerate(λ)          # all z poles (NEVs of denom)
+        verb==0 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
+        if z == 0.0                    # map back to x breaks & no contrib
+            verb==0 || @printf "\torigin, ignore\n"            
+        elseif abs(z)>1.0+UCdist       # outside
+            verb==0 || @printf "\texclude\n"
+        else                           # inside (or on circ *** todo)
+            x = log(z)/im              # preimage back in wavevector plane
+            hp = evalhp(hm,x)          # matrix, or compute_Mder(pep,log(z)/i,1)
+            S = svd(I*(ω+im*η)-evalh(hm,x))
+            verb==0 || @printf "\t chk last sing val=%.3g" S.S[end]
+            u = S.U[:,end]             # last left sing vec
+            v = V[:,j]                 # or S.V[:,end]
+            Tr_res = -(u'*v) / (u'*hp*v)
+            A += 2π*im*Tr_res             # the residue thm, trace thereof
+            verb==0 || @printf "\tTr_res=%g+%gi\n" real(Tr_res) imag(Tr_res)
+        end
+    end
+    A
+end
+
 
 end

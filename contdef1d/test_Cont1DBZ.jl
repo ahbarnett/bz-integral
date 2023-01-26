@@ -41,11 +41,9 @@ for (t,x) in enumerate(xtest)
     if t<=2
         @printf "evalh_ref simply check is Herm: %.3g\n" norm(H - H',Inf)
     end
-    # *** matrix evalH tests
     @printf "evalh chk:          %.3g\n" norm(evalh(Hm,x) - evalh_ref(Hm,x),Inf)
     @printf "evalh_wind chk:     %.3g\n" norm(evalh_wind(Hm,x) - evalh_ref(Hm,x),Inf)
     @printf "fourier_kernel chk: %.3g\n" norm(fourier_kernel.(Ref(Hm),x) - evalh_ref(Hm,x),Inf)
-    
 end
 
 η=1e-6; ω=0.5; tol=1e-8;
@@ -54,11 +52,8 @@ end
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
 @printf "\tAa = "; println(Aa)
 @printf "test realadap, n=%d (matrix), M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
-Aan = realadap(Hm,ω,η,tol=tol, verb=1)
-@printf "\tAan = "; println(Aan)
-
-# *** continue with n>1 roots via NEVP...
-
+Aam = realadap(Hm,ω,η,tol=tol, verb=1)       # suffix m for matrix
+@printf "\tAam = "; println(Aam)
 
 
 @printf "\nTest roots methods (also see bench_roots.jl)...\n"
@@ -93,6 +88,11 @@ Ac = imshcorr(hm,ω,η,N=NPTR, verb=0)         # a=1 so Davis exp(-aN) ~ 1e-13
 Ad = discresi(hm,ω,η,verb=0)
 #println(Ad,"    ",Aa,"   ratio:",Ad/Aa)   # for eyeball ratio-fixing :)
 @printf "test discresi:\t\t\t|Ad-Aa| = %.3g    (don't trust below claimed err)\n" abs(Ad-Aa)
+
+@printf "\nNew quadrature methods, matrix case... (for above params)\n"
+Adm = discresi(Hm,ω,η, verb=1)
+println(Adm,"    ",Aam,"   ratio:",Adm/Aam)   # for eyeball ratio-fixing :)
+@printf "test discresi:\t\t\t|Adm-Aam| = %.3g    (don't trust below claimed err)\n" abs(Adm-Aam)
 
 
 # known band struc case with eta=0+: imshcorr...
