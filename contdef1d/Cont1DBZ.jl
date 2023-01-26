@@ -336,9 +336,11 @@ function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
     A = complex(0.0)                   # CF64
     for z in zr                        # all z poles (roots of denom)
         verb==0 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
-        if abs(z)>1.0+UCdist           # outside
+        if z == 0.0                    # map back to x breaks & no contrib
+            verb==0 || @printf "\torigin, ignore\n"            
+        elseif abs(z)>1.0+UCdist       # outside
             verb==0 || @printf "\texclude\n"
-        elseif abs(z)<=1.0-UCdist      # inside, include
+        elseif abs(z)<=1.0-UCdist      # inside but not origin
             res = -1.0/evalhp(hm,log(z)/im)    # residue, use x corresp to z
             A += 2π*im*res             # the residue thm
             verb==0 || @printf "\tres=%g+%gi\n" real(res) imag(res)

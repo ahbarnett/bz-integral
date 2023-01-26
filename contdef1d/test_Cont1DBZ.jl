@@ -98,6 +98,8 @@ Ad = discresi(hm,ω,η,verb=0)
 # known band struc case with eta=0+: imshcorr...
 @printf "\nNew quadrature methods at eta=0+, scalar case...\n"
 M=1; hm = OffsetVector(complex([1/2,0,1/2]),-M:M)    # h(x)=cos(x), band [-1,1]
+# let's see if can break via zero extreme coeffs... (now fixed)
+#M=2; hm = OffsetVector(complex([0,1/2,0,1/2,0]),-M:M)    # h(x)=cos(x), band [-1,1]
 η=0.0   # poss to check eta>0 against below exact DOS form w O(eta) error too
 ωs=[-1.6, -0.3, 0.9, 1.3, 1.9]          # below, thru, above band
 for ω in ωs

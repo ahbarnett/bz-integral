@@ -209,14 +209,16 @@ also be written
 in terms of the complex wavevector derivative $H'$ of the original band
 Hamiltonian \eqref{Hk}.
 
-Numerically, the roots of the denominator $\om + i\eta - \tH(z)$
-are found by noting that
+Numerically roots of the denominator $iz(\om + i\eta - \tH(z))$
+are found as follows.
+The set of such nonzero roots is the same as the nonzero roots of
 $$
-z^M(\om + i\eta - \tH(z))
+z^M(\om + i\eta - \tH(z)),
 $$
-is a polynomial of degree $2M$ with coefficients
+a polynomial of degree $2M$ with coefficients
 $a_j = (\om+i\eta)\delta_{jM} - H_{j-M}$ for $j=0,1,\dots,2M$.
-This trick is due to J.\ Boyd in the context of root-finding.
+This ``Laurent to polynomial'' conversion
+trick is due to J.\ Boyd in the context of root-finding.
 One finds its roots by either the companion matrix
 eigenvalues or iterative deflation with Laguerre's method.
 Currently we use an $\bigO(M^2)$ scaling fast implementation of the former
@@ -225,6 +227,9 @@ for degrees greater than 200, else the
 latter (\cite{skowron} as coded in \texttt{PolynomialRoots.jl}).
 The latter is around 10 times faster for the same degree, but
 appears unstable for degrees above about 200.
+Zero roots (which may arise for vanishing extremal coefficients
+$H_{\pm M}$, $H_{\pm (M-1)}$, etc) are discarded since it has
+already been shown that $f$ is analytic at the origin.
 
 Finally we consider
 the case $\eta\to0^+$: the denominator then often has roots lying on $|z|=1$,
@@ -330,6 +335,9 @@ For the case $\eta=0^+$, any eigenvalues on the unit circle
 but which lay in the unit disc for $\eta>0$ must be appended to the list.
 
 
+
+
+% * use Bindle-Hood winding Rouche to count PEP eigenvalues in disc?
 
 
 \bibliographystyle{abbrv}
