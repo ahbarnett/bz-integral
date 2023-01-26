@@ -20,36 +20,42 @@ zsort(z) = sort(z, by = x->reim(x))   # sort C-numbers as in MATLAB meth 'real'
 x = 2π*rand(1000)             # plain eval targs
 η=1e-6; ω=0.5; tol=1e-8;      # integr params
 NPTR=30                       # fixed for now
+n = 3                         # non-1 matrix size to test
 
 @printf "bench Cont1DBZ...\n"
-for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})
-    @timeit TIME string(T) begin
+#for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})   # too many cases for now :)
+ for M = [20], T in (ComplexF64, SMatrix{n,n,ComplexF64,n^2})
+    @timeit TIME @sprintf("Type: %s",string(T)) begin
         local hm = OffsetVector(randn(T,2M+1),-M:M)   # h(x)
         local hmconj = OffsetVector([hm[m]' for m in -M:M], -M:M)   # ugh!!
         hm = (hm + reverse(hmconj))/2                 # h(x) hermitian if x Re
         #@printf "check hm has Herm symm : %.3g\n" norm(hm[M]'-hm[-M],Inf)
         @timeit TIME @sprintf("M=%d (eval at %d targs)",M,length(x)) begin
-        for i=1:10   # samples
-            TIME(evalh_ref)(hm,x)
-            TIME(evalh_wind)(hm,x)
-            TIME(evalh)(hm,x)
-            TIME(fourier_kernel)(hm,x)    # note uses array version
+            for i=1:10   # samples
+                TIME(evalh_ref)(hm,x)
+                TIME(evalh_wind)(hm,x)
+                TIME(evalh)(hm,x)
+                TIME(fourier_kernel)(hm,x)    # note uses array version
+            end
+            if T<:Number # for now skip root-finding for matrix coefficients
+                coeffs = reverse(hm.parent)
+                @timeit TIME @sprintf("root-finding (mat size 2M+1=%d)",2M+1) begin
+                    r = TIME(roots)(coeffs)
+                    r2 = TIME(roots_best)(coeffs)   # *** failing for M=32..50
+                end
+                @printf "roots max diff = %.3g\n" maximum(abs.(zsort(r).-zsort(r2)))
+            end
+            # some quadr done for n=1 and n>1...
+            @timeit TIME @sprintf("quadr for ω=%g η=%g tol=%g",ω,η,tol) begin
+                A = TIME(realadap)(hm,ω,η,tol=tol)
+                AL = TIME(realadap_lxvm)(hm,ω,η,tol=tol)
+                if T<:Number
+                    AI = @timeit TIME @sprintf("imshcorr(NPTR=%d)",NPTR) imshcorr(hm,ω,η,N=NPTR)
+                else; AI=NaN; end
+                AD = TIME(discresi)(hm,ω,η)
+            end
+            println("A =",A,"\nAL=",AL,"\nAI=",AI,"\nAD=",AD,"\n")   # eyeball integrals match
         end
-        T<:Number || continue # for now skip root-finding for matrix coefficients
-        coeffs = reverse(hm.parent)
-        @timeit TIME @sprintf("root-finding (matrix size 2M+1=%d)",2M+1) begin
-            r = TIME(roots)(coeffs)
-            r2 = TIME(roots_best)(coeffs)
-        end
-        @printf "roots max diff = %.3g\n" maximum(abs.(zsort(r).-zsort(r2)))
-        @timeit TIME @sprintf("quadr for ω=%g η=%g tol=%g",ω,η,tol) begin
-            A = TIME(realadap)(hm,ω,η,tol=tol)
-            AL = TIME(realadap_lxvm)(hm,ω,η,tol=tol)
-            AI = @timeit TIME @sprintf("imshcorr(NPTR=%d)",NPTR) imshcorr(hm,ω,η,N=NPTR)
-            AD = TIME(discresi)(hm,ω,η)
-        end
-        println(A,'\n',AL,'\n',AI,'\n',AD)   # eyeball integrals match
-    end
     end
 end
 print_timer(TIME, sortby=:firstexec)   # use sortby otherwise randomizes order!

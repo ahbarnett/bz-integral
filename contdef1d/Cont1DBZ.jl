@@ -377,6 +377,10 @@ end
     hm is given by OffsetVector of matrix-valued Fourier series coeffs with
     indices -M:M.
     η must be >0 for now.
+
+    *** todo: eta=0+ work out root velocity in/out sign
+    Speed up! try sampling det and get roots that way.
+    Try deflation.
 """
 function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
     M = (length(hm)-1)/2
