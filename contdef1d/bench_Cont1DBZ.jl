@@ -24,9 +24,11 @@ NPTR=30                       # fixed for now
 @printf "bench Cont1DBZ...\n"
 for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})
     @timeit TIME string(T) begin
-    local hm = OffsetVector(randn(T,2M+1),-M:M)      # h(x)
-    local hm = (hm + conj(reverse(hm)))/2                     # make h(x) real
-    @timeit TIME @sprintf("M=%d (eval at %d targs)",M,length(x)) begin
+        local hm = OffsetVector(randn(T,2M+1),-M:M)   # h(x)
+        local hmconj = OffsetVector([hm[m]' for m in -M:M], -M:M)   # ugh!!
+        hm = (hm + reverse(hmconj))/2                 # h(x) hermitian if x Re
+        #@printf "check hm has Herm symm : %.3g\n" norm(hm[M]'-hm[-M],Inf)
+        @timeit TIME @sprintf("M=%d (eval at %d targs)",M,length(x)) begin
         for i=1:10   # samples
             TIME(evalh_ref)(hm,x)
             TIME(evalh_wind)(hm,x)

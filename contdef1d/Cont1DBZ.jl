@@ -11,7 +11,7 @@ using LinearAlgebra
 using Printf
 using AMRVW               # roots in O(N^2)
 using PolynomialRoots     # low-order faster roots
-using NonlinearEigenproblems   # n>1 matrix case
+using NonlinearEigenproblems   # n>1 matrix case, NEP and PEP solvers
 
 using LoopVectorization    # experimental
 
@@ -385,7 +385,7 @@ function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
     hmplusc[0] += I*(ω+im*η)           # F series for denominator
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     pep = PEP(Matrix.(hmplusc_vec))    # set up PEP; SMatrix -> plain Matrix
-    λ, V = polyeig(pep)               # V is n*J stack of right evecs
+    λ,V = polyeig(pep)                 # slow? V is n*J stack of right evecs
     
     UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64
