@@ -4,6 +4,7 @@
 push!(LOAD_PATH,".")
 using Cont1DBZ
 using OffsetArrays
+using StaticArrays
 using Printf
 
 using BenchmarkTools
@@ -13,11 +14,13 @@ using LinearAlgebra
 BLAS.set_num_threads(1)       # linalg single-thread for fairness
 
 x = 2π*rand(1000)
-η=1e-6; ω=0.5; tol=1e-8;
+# η=1e-6; ω=0.5; tol=1e-8;
+η=1e-5; ω=0.5; tol=1e-5;       # more realistic for apps
 NPTR=30
 
 # double loop over scalar and matrix types (inner), F series lengths (outer):
-for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})
+#for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})
+for M = [10], T in (ComplexF64, SMatrix{5,5,ComplexF64,25})
     @printf "\nbench Cont1DBZ with M=%d, of type " M; println(T," :\n")
     @printf "Eval at %d targs...\n" length(x)
     local hm = OffsetVector(randn(T,2M+1),-M:M)      # h(x)

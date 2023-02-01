@@ -227,7 +227,8 @@ Currently we use an $\bigO(M^2)$ scaling fast implementation of the former
 for degrees greater than 200, else the
 latter (\cite{skowron} as coded in \texttt{PolynomialRoots.jl}).
 The latter is around 10 times faster for the same degree, but
-appears unstable for degrees above about 200.
+appears unstable for degrees above about 200,
+or (update) sometimes even for degrees above 60.
 Zero roots (which may arise for vanishing extremal coefficients
 $H_{\pm M}$, $H_{\pm (M-1)}$, etc) are discarded since it has
 already been shown that $f$ is analytic at the origin.
@@ -330,7 +331,7 @@ is holomorphic at the origin (*** this should be fleshed out).
 
 The steps are:
 i) find all nonlinear eigenvalues $z_j$ lying in the unit disc
-for the polynomial $z^MA(z)$,
+for the polynomial $z^MB(z)$,
 which is a polynomial eigenvalue problem (PEP);
 ii) extract all right and left eigenvectors and $B'$ at each eigenvalue;
 iii) compute all residues (at this point $\tr$ may be taken);
@@ -340,8 +341,86 @@ but which lay in the unit disc for $\eta>0$ must be appended to the list.
 
 
 
+\section{Timing results}
 
-% * use Bindle-Hood winding Rouche to count PEP eigenvalues in disc?
+We want to know the speed-up factor of above residue (R) method vs
+conventional adaptive (A) quadrature on the real axis.
+Call this
+factor ${\cal F} := t_\tbox{A}/t_\tbox{R}$.
+Stick to single-thread Julia and same for LAPACK libraries called.
+(A) is pretty optimal due to LXVM optim.
+
+Fix default parameters:
+\ben
+\item
+  $\eta=10^{-5}$ (the smallest relevant in CCQ physics). There is also some intellectual interest in being able to take
+  $\eta=0^+$, although this could be done via Richardson from selected
+  values eg $\eta = [1,2,4]\times 10^{-3}$, if such values are smaller than
+  other length-scales in the problem (this may be impossible near band edges).
+\item
+  $\eps = 10^{-5}$ tolerance for (A). However, (R) usually gets accuracy
+  close to machine precision,
+  so, hard to know what to fairly compare here.
+\item Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark of 2640 for 1 thread.
+\een
+  
+The main uncertainty in the band structure setting is the
+``number of band intersections ($N_\tbox{BI}$, each giving a pole near real axis) per Fourier mode'',
+which we call ${\cal Z}$.
+Eg if $M=10$ and randn coeffs are used, there's around 14 zeros,
+so ${\cal Z} = 0.7$.
+But if exp decaying coeffs used, ${\cal Z} = 0.1$ (typ 2 zeros),
+nearly 10x smaller.
+
+
+\subsection{Scalar case is $n=1$}
+
+The cost of (A) is $\bigO(M N_\tbox{BI} \log \eta^{-1})$. 
+
+The cost of (R) is $\bigO(M^2)$, due to using the fast companion EVP
+method of \cite{aurentz1,aurentz2}.
+
+
+
+
+
+
+CPU time ratio between conventional
+quadgk
+
+
+  \subsection{Matrix case, say, $n=5$}
+
+  Here we chose a sensible small $n$ typical of some CCQ apps.
+  
+
+
+  \subsection{Issues}
+
+  \ben
+\item Find some zeros vs all of them?
+  
+  Residue method needs all the polynomial zeros inside the unit circle,
+  which is about half the total, ie, is about $M$.
+  Thus an all-zeros method (such as companion) seems best, even for
+  the matrix case; it only wastes a factor of 2.
+
+  A contour-deformation method only needs nearby zeros, which scales
+  like $N_\tbox{BI}$, so may be 10x less than $M$.
+  
+Band-edges: near band edges (A) gets easier since the poles are only
+$\bigO(\sqrt{\eta})$ from the real axis, no longer $\bigO(\eta)$.
+It may be Richardson breaks here.
+
+
+% To do
+
+% * apply exp decay to randn F coeffs to get far away poles, chk no issues
+
+
+% * use Bindel-Hood winding Rouche to count PEP eigenvalues in disc?
+
+
 
 
 \bibliographystyle{abbrv}

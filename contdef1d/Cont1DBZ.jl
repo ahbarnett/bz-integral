@@ -260,7 +260,7 @@ end
     Same interface as MATLAB roots, and roots().
 """
 function roots_best(a::AbstractVector{<:Number})  # does not allow dims>1 arrays
-    if length(a)<220              # we're pushing it, may die in acc for >200
+    if length(a)<60              # we're pushing it, may die in acc for >200
         PolynomialRoots.roots(reverse(a))
     else              # stable O(M^2) but not quite as fast
         AMRVW.roots(reverse(a))
@@ -343,6 +343,7 @@ function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
     hmplusc[0] += ω+im*η               # F series for denominator
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     zr = roots_best(reverse(hmplusc_vec))   # flip to use poly coeff ord
+    verb>0 && @printf "\tdiscresi (n=1): # roots η-near UC = %d\n" sum(@. abs(abs(zr)-1)<10η)
     UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64
     for z in zr                        # all z poles (roots of denom)
@@ -390,6 +391,7 @@ function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     pep = PEP(Matrix.(hmplusc_vec))    # set up PEP; SMatrix -> plain Matrix
     λ,V = polyeig(pep)                 # slow? V is n*J stack of right evecs
+    @printf "\tdiscresi (mat): # roots η-near UC = %d\n" sum(@. abs(abs(λ)-1)<10η)
     
     UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64
