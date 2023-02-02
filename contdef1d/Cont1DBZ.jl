@@ -390,8 +390,8 @@ function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
     hmplusc[0] += I*(ω+im*η)           # F series for denominator
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     pep = PEP(Matrix.(hmplusc_vec))    # set up PEP; SMatrix -> plain Matrix
-    #λ,V = polyeig(pep)                 # slow? V is n*J stack of right evecs
-    λ = polyeig(pep)                 # only require evals
+    λ,V = polyeig(pep)                 # slow? V is n*J stack of right evecs
+    #show(λ)
     verb==0 || @printf "\tdiscresi (n=%d): # roots η-near UC = %d\n" n sum(@. abs(abs(λ)-1)<10η)
     UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64

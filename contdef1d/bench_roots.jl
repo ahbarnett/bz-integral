@@ -46,11 +46,11 @@ end
 using LinearAlgebra
 BLAS.set_num_threads(1)       # linalg single-thread for fairness, also faster!
 
-@printf "\nspeed tests...\nsize M\t\tmyroots\tAMRVW\tP.r,not\tFastPR\tPR.r\t(times in ms)\n"
-for M = 1 .<< (4:10)        # sizes to test
-#for M in 100:20:400
-    @printf "%d\t\t" M
-    p = randn(ComplexF64,M)    # complex coeffs
+@printf "\nspeed tests...\ndegr d\t\tmyroots\tAMRVW\tP.r,not\tFastPR\tPR.r\t(times in ms)\n"
+#for d = 1 .<< (4:10)        # sizes (poly degrees) to test
+for d in 100:100:200
+    @printf "%d\t\t" d
+    p = randn(ComplexF64,d)    # complex coeffs
     rp = reverse(p)           # precompute
     pp = P.Polynomial(p)
     t_ns1 = @elapsed local r1 = Cont1DBZ.roots(rp)   # my companion->eigvals M^3
@@ -70,12 +70,12 @@ for M = 1 .<< (4:10)        # sizes to test
         @printf "errs:\t\t%.3g" maximum(abs.(r1))-maximum(abs.(r2))
         @printf "\t%.3g" maximum(abs.(r1))-maximum(abs.(r3))
         @printf "\t%.3g" maximum(abs.(r1))-maximum(abs.(r4))
-        @printf "\t%.3g\n" maximum(abs.(r1))-maximum(abs.(r5)) # M>200 fails!
+        @printf "\t%.3g\n" maximum(abs.(r1))-maximum(abs.(r5)) # d>200 fails!
     end
 end
 
 # julia -t1, BLASthreads=1: (& I wrote in the Poly.r by hand due to FPR dumb):
-#size M		myroots	AMRVW	Poly.r	FastPR	PR.r	(times in ms)
+#degr d		myroots	AMRVW	Poly.r	FastPR	PR.r	(times in ms)
 #16		0.0833	0.0819	0.0799	0.0782	0.0113
 #32		0.32	0.307	0.361	0.305	0.0383
 #64		1.62	1.15	1.65	1.09	0.153
@@ -87,8 +87,8 @@ end
 # Conclusions:
 # 1) native jl AMWVR pkg is within few % of Fortran and FPR
 # 2) FPR dumbly overwrites P.roots method so you can't compare together
-# 3) PR is 8x faster than any other, but dies w/ O(1)/NaN errs for M>=200.
-# Suggest PR for M<150 or so, but AMRVW for M greater.
+# 3) PR is 8x faster than any other, but dies w/ O(1)/NaN errs for d>=200.
+# Suggest PR for d<150 or so, but AMRVW for d greater.
 # 4) for vector (eg n=3) case for Jason, none of this will matter; need to
 #    generalize to block companion eigvals, or iterative Skowron'12 NEVP invent
 
@@ -96,7 +96,7 @@ end
 # OLDER tests...
 
 # multithreaded julia, BLASthreads=1: (same for BLASthreads=8):
-#size M		myroots	AMRVW	Poly.r	FastPR	(times in ms)
+#degr d		myroots	AMRVW	Poly.r	FastPR	(times in ms)
 #8		0.0176	0.0224	0.0207	0.0207
 #32		0.311	0.308	0.301	0.295
 #128		10.3	4.34	4.05	4.08
@@ -104,7 +104,7 @@ end
 #2048		1.36e+04 892	819	817
 
 # julia -t1:
-#size M		myroots	AMRVW	Poly.r	FastPR	(times in ms)
+#degr d		myroots	AMRVW	Poly.r	FastPR	(times in ms)
 #16		0.0802	0.0886	0.0859	0.0844
 #32		0.325	0.306	0.304	0.308
 #64		1.6	1.15	1.1	1.11

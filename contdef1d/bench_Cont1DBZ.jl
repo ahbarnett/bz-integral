@@ -25,12 +25,12 @@ n = 5                         # non-1 matrix size to test
 
 @printf "bench Cont1DBZ...\n"
 #for M = [8,32,128], T in (ComplexF64, SMatrix{1,1,ComplexF64,1}, SMatrix{5,5,ComplexF64,25})   # too many cases for now :)
- for M = [10], T in (ComplexF64, SMatrix{n,n,ComplexF64,n^2})
+ for M = [100], T in (ComplexF64, SMatrix{n,n,ComplexF64,n^2})
     @timeit TIME @sprintf("Type: %s",string(T)) begin
         local hm = OffsetVector(randn(T,2M+1),-M:M)   # h(x)
         local hmconj = OffsetVector([hm[m]' for m in -M:M], -M:M)   # ugh!!
         hm = (hm + reverse(hmconj))/2                 # h(x) hermitian if x Re
-        hm = OffsetVector([exp(-0.5*abs(m))*hm[m] for m in -M:M], -M:M) # decay
+        #hm = OffsetVector([exp(-0.5*abs(m))*hm[m] for m in -M:M], -M:M) # decay
         #@printf "check hm has Herm symm : %.3g\n" norm(hm[M]'-hm[-M],Inf)
         @timeit TIME @sprintf("M=%d (eval at %d targs)",M,length(x)) begin
             for i=1:10   # samples

@@ -381,7 +381,7 @@ ${\cal Z} = 0.2$ (typ 2--4 zeros; it seems silly to push down
 to a median of 0 zeros, where (A) obviously wins).
 
 
-\subsection{Scalar case is $n=1$}
+\subsection{Scalar case}
 
 The cost of (A) is $\bigO(M N_\tbox{BI} \log \eta^{-1})$,
 since there is adaptive quad down to $\eta$ scale around each band intersection
@@ -422,7 +422,8 @@ Here we chose a sensible small $n=5$ typical of some CCQ apps.
 (R) costs 23 ms using the library PEP solver via naive block companion,
 at $\bigO((nM)^3)$.
 This is a size $2nM=100$ generalized EVP since the companion matrix is
-a pencil in {\tt NonlinearEigenproblems.jl}.
+a pencil in {\tt NonlinearEigenproblems.jl}, as in Merhmann--Voss.
+Even simply using plain EVP would be twice as fast.
 
 (A) costs 1 ms per BI.
 For randn matrix coeffs, this gives 17 ms.
@@ -435,13 +436,26 @@ My memory of bands is that there are often more than 2 BIs in each
 1D integral, maybe 4 or 6. But we still do not win, with this current
 PEP solver.
 
-Caveat: we have not tried a $\bigO((nM)^2)$ PEP solver yet!
+We have not tried a $\bigO((nM)^2)$ PEP solver yet,
+however the fast scalar companion takes 10 ms for degree $2nM=200$;
+this is not much different from the existing PEP solver at 20 ms.
+
+Upshot is we're wasting time finding 100 roots inside the circle,
+so that only a few problematic zeros near unit circle can be removed.
+It is not worth it. This suggests returning to contour deformation/shift.
 
 *** To do: more serious benchmarking of all types of PEP solvers.
 
-\subsection{Issues}
+\subsection{Issues / Discussion}
 
 \ben
+\item Failure for exp decaying coeffs at large $M$ (eg 100).
+  There are unstable roots far from the unit circle (inside and outside),
+  forming annuli.
+  This problem doesn't happen with randn coeffs since there almost all zeros
+  are on the unit circle, and stably computed.
+  Jason anticipated something like this.
+  
 \item Need {\tt quadgk} to output what nodes or panel breakpoints it used,
   number of func evals, etc.
   Without that it is hard to fight it using timings alone.
