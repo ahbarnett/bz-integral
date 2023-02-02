@@ -353,7 +353,11 @@ Stick to single-thread Julia and same for LAPACK libraries called.
 Fix default parameters:
 \ben
 \item
-  $\eta=10^{-5}$ (the smallest relevant in CCQ physics). There is also some intellectual interest in being able to take
+  $\eta=10^{-5}$ (the smallest relevant in CCQ physics).
+  Since $\log_2(\eta) \approx 17$, this demands about 35 extra panels per band
+  intersection.
+
+  There is also some intellectual interest in being able to take
   $\eta=0^+$, although this could be done via Richardson from selected
   values eg $\eta = [1,2,4]\times 10^{-3}$, if such values are smaller than
   other length-scales in the problem (this may be impossible near band edges).
@@ -361,7 +365,8 @@ Fix default parameters:
   $\eps = 10^{-5}$ tolerance for (A). However, (R) usually gets accuracy
   close to machine precision,
   so, hard to know what to fairly compare here.
-\item Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark of 2640 for 1 thread.
+\item Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark score 2640 (1 thread),
+  using AC power.
 \een
   
 The main uncertainty in the band structure setting is the
@@ -369,58 +374,110 @@ The main uncertainty in the band structure setting is the
 which we call ${\cal Z}$.
 Eg if $M=10$ and randn coeffs are used, there's around 14 zeros,
 so ${\cal Z} = 0.7$.
-But if exp decaying coeffs used, ${\cal Z} = 0.1$ (typ 2 zeros),
-nearly 10x smaller.
+But if exp decaying
+coeffs used (we pick a decay of $e^{-0.5|m|}$ which goes down to
+0.006 at $m=M=10$),
+${\cal Z} = 0.2$ (typ 2--4 zeros; it seems silly to push down
+to a median of 0 zeros, where (A) obviously wins).
 
 
 \subsection{Scalar case is $n=1$}
 
-The cost of (A) is $\bigO(M N_\tbox{BI} \log \eta^{-1})$. 
+The cost of (A) is $\bigO(M N_\tbox{BI} \log \eta^{-1})$,
+since there is adaptive quad down to $\eta$ scale around each band intersection
+(BI), and the $M$ factor is the Fourier series evaluation.
 
 The cost of (R) is $\bigO(M^2)$, due to using the fast companion EVP
-method of \cite{aurentz1,aurentz2}.
+method of \cite{aurentz1,aurentz2} or the deflation rootfinder
+of \cite{skowron}.
+It is indep of $\eta$ or number of BI.
 
+(R) takes 24 $\mu$s (exploiting the deflation rootfinder)
+or 140 $\mu$s (for fast companion).
 
+(A) takes about 35 $\mu$s per BI. This gives
+450 $\mu$s for randn coeffs, but only 70 $\mu$s for $N_\tbox{BI}=2$.
 
+So ${\cal F} \approx 20$ for randn
+but only ${\cal F} \approx 3.5$ for decaying coeffs.
 
+\subsection{Matrix case}
 
+For general $n$,
+the cost of (A) is $\bigO((n+M)n^2 N_\tbox{BI} \log \eta^{-1})$,
+where the first term is from the $\bigO(n^3)$ matrix inverses,
+and the 2nd from the Fourier series evaluation of matrix entries.
 
-CPU time ratio between conventional
-quadgk
+The cost of (R) is $\bigO(n^2M^2)$ in theory, to find
+all PEP eigenpairs, using deflation, some as-yet-unknown
+block fast companion scheme, or the fast scalar companion on
+$\det B(z)$ which is a degree $nM$ polynomial.
 
+So for $N_\tbox{BI}\approx 1$, and $n\approx M$,
+(R) is quartic but (A) only cubic in the size.
+But (A) has the $\log 1/\eta$ extra factor.
 
-  \subsection{Matrix case, say, $n=5$}
+Here we chose a sensible small $n=5$ typical of some CCQ apps.
 
-  Here we chose a sensible small $n$ typical of some CCQ apps.
-  
+(R) costs 23 ms using the library PEP solver via naive block companion,
+at $\bigO((nM)^3)$.
+This is a size $2nM=100$ generalized EVP since the companion matrix is
+a pencil in {\tt NonlinearEigenproblems.jl}.
 
+(A) costs 1 ms per BI.
+For randn matrix coeffs, this gives 17 ms.
+For decaying coeffs (2 BIs), only 2 ms.
 
-  \subsection{Issues}
+So, if $N_\tbox{BI}=2$ only, (R) is 10x slower than (A),
+${\cal F} = 0.1$ and we do not win.
 
-  \ben
-\item Find some zeros vs all of them?
+My memory of bands is that there are often more than 2 BIs in each
+1D integral, maybe 4 or 6. But we still do not win, with this current
+PEP solver.
+
+Caveat: we have not tried a $\bigO((nM)^2)$ PEP solver yet!
+
+*** To do: more serious benchmarking of all types of PEP solvers.
+
+\subsection{Issues}
+
+\ben
+\item Need {\tt quadgk} to output what nodes or panel breakpoints it used,
+  number of func evals, etc.
+  Without that it is hard to fight it using timings alone.
+
+\item Find some zeros (or PEP eigenpairs) vs all of them?
   
   Residue method needs all the polynomial zeros inside the unit circle,
   which is about half the total, ie, is about $M$.
   Thus an all-zeros method (such as companion) seems best, even for
   the matrix case; it only wastes a factor of 2.
-
+  
   A contour-deformation method only needs nearby zeros, which scales
   like $N_\tbox{BI}$, so may be 10x less than $M$.
-  
-Band-edges: near band edges (A) gets easier since the poles are only
-$\bigO(\sqrt{\eta})$ from the real axis, no longer $\bigO(\eta)$.
-It may be Richardson breaks here.
+
+\item
+  Band-edges: near band edges (A) gets easier since the poles are only
+  $\bigO(\sqrt{\eta})$ from the real axis, no longer $\bigO(\eta)$.
+  It may be Richardson breaks here.
+
+  The graphene $n=2$ exact DOS is a good test for band edges and Van Hove.
+
+\item Robustness studies; this has to not break over billions of calls.
+\een
 
 
 % To do
 
 % * apply exp decay to randn F coeffs to get far away poles, chk no issues
 
-
 % * use Bindel-Hood winding Rouche to count PEP eigenvalues in disc?
 
-
+% * local quadgk panel perturbation into C plane iff
+% a local lin model fits suff well, for a panel already small enough.
+% The local lin model has to say which side the root is to deform either
+% up or down.
+  
 
 
 \bibliographystyle{abbrv}

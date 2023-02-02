@@ -343,27 +343,27 @@ function discresi(hm::AbstractVector{<:Number},ω,η; verb=0)   # only for n=1
     hmplusc[0] += ω+im*η               # F series for denominator
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     zr = roots_best(reverse(hmplusc_vec))   # flip to use poly coeff ord
-    verb>0 && @printf "\tdiscresi (n=1): # roots η-near UC = %d\n" sum(@. abs(abs(zr)-1)<10η)
+    verb==0 || @printf "\tdiscresi (n=1): # roots η-near UC = %d\n" sum(@. abs(abs(zr)-1)<10η)
     UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64
     for z in zr                        # all z poles (roots of denom)
-        verb==0 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
+        verb<2 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
         if z == 0.0                    # map back to x breaks & no contrib
-            verb==0 || @printf "\torigin, ignore\n"            
+            verb<2 || @printf "\torigin, ignore\n"            
         elseif abs(z)>1.0+UCdist       # outside
-            verb==0 || @printf "\texclude\n"
+            verb<2 || @printf "\texclude\n"
         elseif abs(z)<=1.0-UCdist      # inside but not origin
             res = -1.0/evalhp(hm,log(z)/im)    # residue, use x corresp to z
             A += 2π*im*res             # the residue thm
-            verb==0 || @printf "\tres=%g+%gi\n" real(res) imag(res)
+            verb<2 || @printf "\tres=%g+%gi\n" real(res) imag(res)
         else                           # handle on (eps-close to) unit circ
             hp = evalhp(hm,log(z)/im)
             if real(hp)<0.0            # pole approach from outside as eta->0
-                verb==0 || @printf "UC\texclude\n"
+                verb<2 || @printf "UC\texclude\n"
             else                       # include
                 res = -1.0/hp          # same residue formula as above
                 A += 2π*im*res
-                verb==0 || @printf "UC\tres=%g+%gi\n" real(res) imag(res)
+                verb<2 || @printf "UC\tres=%g+%gi\n" real(res) imag(res)
             end
         end
     end
@@ -390,31 +390,33 @@ function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
     hmplusc[0] += I*(ω+im*η)           # F series for denominator
     hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
     pep = PEP(Matrix.(hmplusc_vec))    # set up PEP; SMatrix -> plain Matrix
-    λ,V = polyeig(pep)                 # slow? V is n*J stack of right evecs
-    @printf "\tdiscresi (mat): # roots η-near UC = %d\n" sum(@. abs(abs(λ)-1)<10η)
-    
+    #λ,V = polyeig(pep)                 # slow? V is n*J stack of right evecs
+    λ = polyeig(pep)                 # only require evals
+    verb==0 || @printf "\tdiscresi (n=%d): # roots η-near UC = %d\n" n sum(@. abs(abs(λ)-1)<10η)
     UCdist = η==0.0 ? 1e-13 : 0.0      # max dist from |z|=1 treated as |z|=1
     A = complex(0.0)                   # CF64
     for (j,z) in enumerate(λ)          # all z poles (NEVs of denom)
-        verb==0 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
+        verb<2 || @printf "\tpole |z|=%.15f ang=%.6f: " abs(z) angle(z)
         if z == 0.0                    # map back to x breaks & no contrib
-            verb==0 || @printf "\torigin, ignore\n"            
+            verb<2 || @printf "\torigin, ignore\n"            
         elseif abs(z)>1.0+UCdist       # outside
-            verb==0 || @printf "\texclude\n"
+            verb<2 || @printf "\texclude\n"
         else                           # inside (or on circ *** todo)
             x = log(z)/im              # preimage back in wavevector plane
             hp = evalhp(hm,x)          # matrix, or compute_Mder(pep,log(z)/i,1)
             S = svd(I*(ω+im*η)-evalh(hm,x))
-            verb==0 || @printf "\t chk last sing val=%.3g" S.S[end]
+            verb<2 || @printf "\t chk last sing val=%.3g" S.S[end]
             u = S.U[:,end]             # last left sing vec
-            v = V[:,j]                 # or S.V[:,end]
+            v = S.V[:,end]             # or V[:,j]
             Tr_res = -(u'*v) / (u'*hp*v)
             A += 2π*im*Tr_res             # the residue thm, trace thereof
-            verb==0 || @printf "\tTr_res=%g+%gi\n" real(Tr_res) imag(Tr_res)
+            verb<2 || @printf "\tTr_res=%g+%gi\n" real(Tr_res) imag(Tr_res)
         end
     end
     A
 end
 
+"""
+"""
 
 end

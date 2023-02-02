@@ -19,7 +19,7 @@ zsort(z) = sort(z, by = x->reim(x))   # sort C-numbers as in MATLAB meth 'real'
 #zsort(z) = sort(z, by = x->(abs(x),angle(x)))  # sort by mag then angle (bad)
 
 x = 2π*rand(1000)             # plain eval targs
-η=1e-4; ω=0.5; tol=1e-8;      # integr params
+η=1e-5; ω=0.5; tol=1e-5;      # integr params
 NPTR=30                       # fixed for now
 n = 5                         # non-1 matrix size to test
 
@@ -54,7 +54,7 @@ n = 5                         # non-1 matrix size to test
                 if T<:Number
                     AI = @timeit TIME @sprintf("imshcorr(NPTR=%d)",NPTR) imshcorr(hm,ω,η,N=NPTR)
                 else; AI=NaN; end
-                AD = TIME(discresi)(hm,ω,η, verb=0)
+                AD = TIME(discresi)(hm,ω,η, verb=1)
             end
             println("A =",A,"\nAL=",AL,"\nAI=",AI,"\nAD=",AD,"\n")   # eyeball integrals match
         end
