@@ -416,7 +416,5 @@ function discresi(hm::AbstractVector{<:AbstractMatrix},ω,η; verb=0)
     A
 end
 
-"""
-"""
 
 end

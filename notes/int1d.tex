@@ -425,7 +425,7 @@ This is a size $2nM=100$ generalized EVP since the companion matrix is
 a pencil in {\tt NonlinearEigenproblems.jl}, as in Merhmann--Voss.
 Even simply using plain EVP would be twice as fast.
 
-(A) costs 1 ms per BI.
+(A) costs 1 ms per BI, as predicted by $n^2=25$ times the scalar cost for (A).
 For randn matrix coeffs, this gives 17 ms.
 For decaying coeffs (2 BIs), only 2 ms.
 
@@ -455,6 +455,8 @@ It is not worth it. This suggests returning to contour deformation/shift.
   This problem doesn't happen with randn coeffs since there almost all zeros
   are on the unit circle, and stably computed.
   Jason anticipated something like this.
+  It suggests onyl using contour deformations or shifts, plus finding
+  PEP eigenvalues only in the shifted-over region via deflation.
   
 \item Need {\tt quadgk} to output what nodes or panel breakpoints it used,
   number of func evals, etc.
@@ -466,6 +468,7 @@ It is not worth it. This suggests returning to contour deformation/shift.
   which is about half the total, ie, is about $M$.
   Thus an all-zeros method (such as companion) seems best, even for
   the matrix case; it only wastes a factor of 2.
+  But it's a big waste to need all zeros in the circle this way.
   
   A contour-deformation method only needs nearby zeros, which scales
   like $N_\tbox{BI}$, so may be 10x less than $M$.

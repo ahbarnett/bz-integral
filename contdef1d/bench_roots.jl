@@ -13,7 +13,7 @@ import PolynomialRoots    # Giordano low-M astro pkg (a la Skowron'12, NumRec)
 using Printf
 
 if true
-    @printf "correctness tests...\n"
+    @printf "correctness tests... (only at degree=4)\n"
     # real coeffs case, roots should be
     r = [1. 2. 3. 4.]
     p4 = [24.0, -50.0, 35.0, -10.0, 1.0]  # (x-1) * (x-2) * (x-3) * (x-4)
