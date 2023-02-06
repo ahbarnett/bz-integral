@@ -2,7 +2,7 @@ module Cont1DBZ
 """
 Cont1DBZ: module for 1D Brillouin zone integration via contour deformation.
 
-A H Barnett, help by LXVM. Dec 2022 - Jan 2023.
+A H Barnett, help by LXVM. Dec 2022 - Feb 2023.
 """
 
 using OffsetArrays
@@ -12,6 +12,7 @@ using Printf
 using AMRVW               # roots in O(N^2)
 using PolynomialRoots     # low-order faster roots
 using NonlinearEigenproblems   # n>1 matrix case, NEP and PEP solvers
+using FourierSeriesEvaluators: fourier_contract
 
 using LoopVectorization    # experimental
 
@@ -26,7 +27,8 @@ export
     imshcorr,
     discresi,
     fourier_kernel,
-    realadap_lxvm
+    realadap_lxvm,
+    DOSIntegral1D
 
 
 """
@@ -218,6 +220,14 @@ end
 """
 realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) = realadap(hm, ω, η; tol=tol, verb=verb, kernel=fourier_kernel)
 
+struct DOSIntegral1D{R,A,K,H}
+    routine::R
+    args::A
+    kwargs::K
+    hm::H
+end
+
+(d::DOSIntegral1D)(x) = d.routine(fourier_contract(d.hm, x), d.args...; d.kwargs...)
 
 
 ######## Methods relating to new contour-deformation techniques...
