@@ -9,6 +9,7 @@ using Printf
 using OffsetArrays
 using Test
 using StaticArrays
+using QuadGK
 
 # -------- module method tests ----------
 M=10         # max mag Fourier freq index
@@ -109,5 +110,23 @@ for ω in ωs
 #    println("DOS=",DOS,", DOSc=",DOSc,", DOSd=",DOSd)  # debug
     @printf "η=0+ Im test ω=%g:     \tDOSc err = %.3g          \tDOSd err = %.3g\n" ω DOSc-DOS DOSd-DOS
 end
+
+# graphene band structure and DOS, with coefficient definition explained below
+# https://lxvm.github.io/AutoBZ.jl/dev/pages/demo/#DOS-of-Graphene
+hm = OffsetMatrix(zeros(SMatrix{2,2,ComplexF64,4}, (5,5)), -2:2, -2:2)
+hm[1,1]   = hm[1,-2] = hm[-2,1] = [0 1; 0 0]
+hm[-1,-1] = hm[-1,2] = hm[2,-1] = [0 0; 1 0]
+
+ω = 2.0; η = 0.1
+
+# gDOSc_int = DOSIntegral1D(imshcorr, (ω, η), (;), hm)
+# gDOSc = quadgk(gDOSc_int, 0, 2pi; rtol=1e-5) # ERROR: MethodError: no method matching imshcorr ... matrix-valued coefficients
+
+# gDOSd_int = DOSIntegral1D(discresi, (ω, η), (;), hm)
+# gDOSd = quadgk(gDOSd_int, 0, 2pi; rtol=1e-5) # ERROR: ArgumentError: invalid argument #4 to LAPACK call
+
+gDOSa_int = DOSIntegral1D(realadap, (ω, η), (; tol=1e-5, kernel=fourier_kernel), hm)
+gDOSa = quadgk(gDOSa_int, 0, 2pi; rtol=1e-5)
+# probably need to multiply by Jacobian determinant
 
 # ------------ end module tests---------------
