@@ -1,0 +1,64 @@
+SGJ added quadgk_count
+and quadgk_print just after LXVM made me a fork returning
+(I E numevals segs)
+
+segs
+
+evalrule.jl: ---------------------
+defines Segment struct:  a, b, I (approx integral contrib), E (error est)
+overloads for Segments: promote_rule (how to take the most inclusive of two
+types, eg int+real -> real),
+convert, isless
+
+evalrule: input func (of type F), a,b,   x,w,gw,  nrm).
+GK rule is x,w,gw
+nrm is a norm func to act on Ik-Ig values
+returns a Segment with (a,b,I,E)
+TX = template type of real (x)
+Note how type of x is preserved:    s = convert(eltype(x), 0.5) * (b-a)
+
+See notes in my fork of QuadGK, meromorphic branch
+
+DomainError(val, msg) : report error of msg for input of val to this routine
+You throw(...) such a DomainError
+
+string with $y replaces by value of y ... v useful
+
+oftype(3, 4.0) gives 4  ... converts 2nd arg to type of 1st.
+
+Val types:
+https://docs.julialang.org/en/v1/manual/types/#%22Value-types%22
+It's worth noting that it's extremely easy to mis-use parametric "value" types, including Val.
+They only help if Val(T) is a type specified in the function.cd
+https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-value-type-1
+Function barrier trick ... allows multiple dispatch each with a known fixed type
+I DON"T GET VAL AT ALL.
+
+Don't try to change the quadgk!, InplaceIntegrand stuff.
+Don't maintain all Tests
+
+Tests:
+@test @inferred checks the type of f matches the result of the compiler,
+returns the result f(x) if so.
+
+Pkg test takes 30 sec :(
+
+
+weird type stuff:
+something
+Some
+
+DataStructures:
+heapify.
+
+SGJ's use of "do" is v hard to follow!
+Eg, quadgk entrypoint
+
+_ bare underscore is like ~ in matlab, a arg never used.
+
+sum( f, v) gives f(v[1])+f(v[2])+... + f(v[end])    ie, an iterator with sum
+It's useful to replace matlab S.a where S is an array of structs.
+So sum(s->s.a, S)  replaces matlab sum(S.a) or sum(S(:).a)
+
+
+

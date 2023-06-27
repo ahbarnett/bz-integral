@@ -2,7 +2,7 @@ module Int1DBZ
 """
 Int1DBZ: 1D Brillouin zone integration, comparing a variety of methods.
 
-A H Barnett, June 2023. Based off of simpler subset of Cont1DBZ.
+A H Barnett, June 2023. Based off of simpler subset of Cont1DBZ.jl
 """
 
 using OffsetArrays
@@ -19,7 +19,10 @@ using QuadGK         # SGJ
 export realadap, realadap_lxvm
 include("integrators.jl")
 
-#include("miniquadgk.jl")
+using DataStructures
+import Base.Order.Reverse
+export Segment, gkrule, applyrule, miniquadgk
+include("miniquadgk.jl")
 
 
 end # module Int1DBZ

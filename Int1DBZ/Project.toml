@@ -4,6 +4,7 @@ authors = ["ahbarnett <alex.h.barnett@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 FourierSeriesEvaluators = "2a892dea-6eef-4bb5-9d1c-de966c9f6db5"
 Gnuplot = "dc211083-a33a-5b79-959f-2ff34033469d"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"

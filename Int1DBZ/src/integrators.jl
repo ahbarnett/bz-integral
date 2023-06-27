@@ -1,4 +1,6 @@
-####### Conventional real-axis quadrature methods...
+####### Conventional real-axis quadrature methods
+
+### Using quadgk directly...
 
 """
     A = realadap(hm,ω,η;tol,verb)
