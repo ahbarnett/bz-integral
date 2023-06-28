@@ -21,7 +21,7 @@ include("integrators.jl")
 using DataStructures
 import Base.Order.Reverse
 using Gnuplot
-export Segment, gkrule, applyrule, miniquadgk, plot
+export Segment, gkrule, applyrule!, miniquadgk, plot
 include("miniquadgk.jl")
 
 

@@ -4,6 +4,7 @@ using OffsetArrays
 using LinearAlgebra
 using Random.Random
 using TimerOutputs
+using Gnuplot
 
 # just sandbox for now, not using Test
 #@testset "evaluators" begin
@@ -68,12 +69,23 @@ TIME(realmyadap)(hm,ω,η,tol=tol)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 #plot(segs)
 
-#=
-@printf "1-seg, f = 1/g, pole subtract...\n"
-d = 0.1
-z0 = 0.3+1im*d
-f(x) = sin(x)/(x-z0)
-r = gkrule()
-=#
 
+@printf "1-seg, f = 1/g, try pole subtract... vs 1e-10 tol numer quadr\n"
+d = 1e-3
+z0 = 0.3+1im*d
+g(x) = sin(x-z0)       # complex sin, root @ z0.  Next root dist ~1.8 from [a,b]
+gp(x) = cos(x-z0)      # g'
+f(x::Number) = 1.0/g(x)
+resf0 = 1.0/gp(z0)     # residue of f at its pole
+a,b = -1.0,1.0
+Im, Em, segs, numevals = miniquadgk(f,a,b,rtol=1e-10);  # right ans, slow
+plot(segs); @gp :- real(z0) imag(z0) "w p pt 1 ps 2"
+r = gkrule()
+fwrk = Vector{ComplexF64}(undef,32);
+s = applyrule!(fwrk,f,a,b,r)
+@printf "\tdumb uncorr 1-seg err %.3g (claimed E %.3g)\n" abs(s.I-Im) s.E
+pole(x) = resf0./(x-z0)
+sc = applyrule!(fwrk,x->f(x)-pole(x),a,b,r)
+Ic = sc.I + resf0*log((b-z0)/(a-z0))
+@printf "\tcorr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
 

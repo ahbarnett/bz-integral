@@ -62,11 +62,14 @@ gkrule() = gkrule([xd7;-xd7[end-1:-1:1]],[wd7;wd7[end-1:-1:1]],[gwd7;gwd7[end-1:
 
 function applyrule!(fwrk,f,a::Float64,b::Float64,r::gkrule;rho=0.0)
     # Eval func f and GK-rule to estimate integral on (a,b) and its error.
-    # fwrk is preallocated workspace (must be size of 2n+1, n=length(r.gw)).
-    # returns a Segment (as with SGJ's evalrule) containing:
+    # fwrk is preallocated workspace (must be size>=2n+1, n=length(r.gw)).
+    #  ...That is an expt in C-style static workspace, not very happy with.
+    #  (why can't have local one-off static allocation of 32 CF64's?)
+    #
+    # Returns a Segment (as with SGJ's evalrule) containing:
     #  I estimated integral, and E estimated error.
     # Include various experimental methods here since that's where fvals
-    # avail. Choose the min error between methods.
+    # avail. Choose the min error between methods. Barnett 6/28/23
     mid, sca = (b+a)/2, (b-a)/2
     n = length(r.gw)
     
@@ -85,7 +88,7 @@ function applyrule!(fwrk,f,a::Float64,b::Float64,r::gkrule;rho=0.0)
     #Ik = sca * sum(fwrk .* r.w)
 
     # less dicking around but still alloc-free hand loop, using fixed fwrk array
-    Ik = Ig = complex(0.0,0.0)
+    Ik = Ig = zero(fwrk[1])   # 0 of type of els of fwrk
     for j=1:2n+1
         fwrk[j] = f(mid + sca*r.x[j])        # save the evals for Gauss below
         Ik += fwrk[j]*r.w[j]
@@ -115,8 +118,11 @@ function applyrule!(fwrk,f,a::Float64,b::Float64,r::gkrule;rho=0.0)
 
     E = abs(Ig-Ik)
     meth = 1
-    # *** if rho>0, replace E with quadinvanal...    using fvals
-    # *** TO DO
+
+    if (rho>0.0)
+        # replace Ik,E with quadinvanal...    using fvals
+        # *** TO DO
+    end
     return Segment(a,b,Ik,E,meth)
 end
 
