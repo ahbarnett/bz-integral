@@ -1,5 +1,5 @@
-### bare bones scalar Gauss-Kronrod quadrature
-### so don't have to constantly hack or grok QuadGK. Mostly from QuadGK
+# Bare bones scalar Gauss-Kronrod quadrature, with segment diagnosis,
+# so don't have to constantly hack or grok QuadGK.
 
 # integration segment (a,b), estimated integral I, and estimated error E,
 # and a record of method used.
@@ -60,25 +60,75 @@ gkrule() = gkrule([xd7;-xd7[end-1:-1:1]],[wd7;wd7[end-1:-1:1]],[gwd7;gwd7[end-1:
 #  return I,E
 #end
 
-function applyrule(f,a::Float64,b::Float64,r::gkrule;rho=0.0)
+function applyrule!(fwrk,f,a::Float64,b::Float64,r::gkrule;rho=0.0)
     # Eval func f and GK-rule to estimate integral on (a,b) and its error.
+    # fwrk is preallocated workspace (must be size of 2n+1, n=length(r.gw)).
     # returns a Segment (as with SGJ's evalrule) containing:
     #  I estimated integral, and E estimated error.
     # Include various experimental methods here since that's where fvals
     # avail. Choose the min error between methods.
     mid, sca = (b+a)/2, (b-a)/2
-    fvals = f.(mid .+ sca*r.x)
-    Ig = sca * sum(fvals[2:2:end] .* r.gw)
-    Ik = sca * sum(fvals .* r.w)
+    n = length(r.gw)
+    
+    #= version using the prealloc fwrk... still have 100 bytes/feval alloc ???
+    for j=1:2n+1     # no alloc
+        fwrk[j] = f(mid + sca*r.x[j])        
+    end
+    #fwrk[1:2n+1] = f.(mid .+ sca*r.x)       # fill the prealloc vector ... doesn't do it, allocs 96 bytes (6 CF64's)
+    @views Ig = sca * sum(fwrk[2:2:2n+1] .* r.gw)   # allocs 11 CF64s
+    @views Ik = sca * sum(fwrk[1:2n+1] .* r.w)      # allocs 19 CF64s
+    =#
+
+    # the clean code I'd like to write... does 4x the alloc of above :(
+    #fwrk[1:2n+1] = f.(mid .+ sca*r.x)       # fill the prealloc vector ... doesn't do it
+    #Ig = sca * sum(fwrk[2:2:end] .* r.gw)
+    #Ik = sca * sum(fwrk .* r.w)
+
+    # less dicking around but still alloc-free hand loop, using fixed fwrk array
+    Ik = Ig = complex(0.0,0.0)
+    for j=1:2n+1
+        fwrk[j] = f(mid + sca*r.x[j])        # save the evals for Gauss below
+        Ik += fwrk[j]*r.w[j]
+    end
+    for i=1:n            # do Gauss quadr
+        Ig += fwrk[2i]*r.gw[i]
+    end
+    Ik *= sca
+    Ig *= sca
+    
+    #= # OR dicking around to avoid a simple static array allocation for fvals!
+    #Ig = Ik = zero(F)  failed   (using f::F  .... where F)
+    j=1
+    Ik = r.w[j] * f(mid + sca*r.x[j])     # j=1 hack to get type of Ik,Ig right
+    Ig = 0.0*Ik                            # otherwise how know f's range type?
+    for halfj=1:n    # loop so no storage of func values ...
+        j = 2halfj   # ... this cannot be the future of scientific computing :(
+        fj = f(mid + sca*r.x[j])
+        Ik += r.w[j] * fj
+        Ig += r.gw[halfj] * fj     
+        j = 2halfj+1
+        Ik += r.w[j] * f(mid + sca*r.x[j])
+    end              # still allocates about 100 bytes per eval ... why?
+    Ik *= sca
+    Ig *= sca
+    =#
+
     E = abs(Ig-Ik)
     meth = 1
     # *** if rho>0, replace E with quadinvanal...    using fvals
+    # *** TO DO
     return Segment(a,b,Ik,E,meth)
 end
 
-function miniquadgk(f,a,b;atol=0.0,rtol=0.0,maxevals=1e7)
+#=     set up easy-to use version doing own alloc ?
+function applyrule(f,a,b,r,...)
+    wrk = 
+    applyrule!(wrk, f,a,b,r...) =    *** TO DO
+=#
+
+function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
     # simple implement based on QuadGK, but easy to understand/modify.
-    # specific to Float64 scalar function f.
+    # specific to Float or Complex scalar function f.
     if atol==0.0          # simpler logic than QuadGK! atol has precedence
         if rtol>0.0
             @assert rtol >= 1e-16
@@ -86,23 +136,45 @@ function miniquadgk(f,a,b;atol=0.0,rtol=0.0,maxevals=1e7)
             rtol = 1e-6   # default
         end
     end        
-    r = gkrule()   # default
+    r = gkrule()       # default panel rule
     n = length(r.gw)   # num embedded Gauss nodes, overall "order" n
     numevals = 2n+1
-    segs = applyrule(f,a,b,r)      # kick off adapt via eval mother seg
+    fwrk = Vector{ComplexF64}(undef,32)   # prealloc *** TO DO make type-sensing
+    segs = applyrule!(fwrk,f,a,b,r)      # kick off adapt via eval mother seg
     I, E = segs.I, segs.E          # global estimates which get updated
     segs = [segs]                  # heap needs to be Vector
     while E>atol && E>rtol*abs(I) && numevals<maxevals
         s = heappop!(segs, Reverse)            # get worst seg
         mid, sca = (s.b+s.a)/2, (s.b-s.a)/2    # split it...
-        s1 = applyrule(f,s.a,mid,r)
-        s2 = applyrule(f,mid,s.b,r)
+        s1 = applyrule!(fwrk,f,s.a,mid,r)
+        s2 = applyrule!(fwrk,f,mid,s.b,r)
         numevals += 2*(2n+1)
         I += -s.I + s1.I + s2.I    # update global integral and err
         E += -s.E + s1.E + s2.E
         heappush!(segs, s1, Reverse)
         heappush!(segs, s2, Reverse)
     end
-    # [resum as SGJ?]
+    # (resum as SGJ?)
     return I, E, segs, numevals
 end
+
+
+# --------- plotting segments ---------------------------------------------
+
+function plot(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
+    # start a new plot
+    a = [s.a for s in segs]
+    b = [s.b for s in segs]
+    @gp real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
+    @gp :- "set size ratio -1"
+end
+function plot!(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
+    # add to current plot
+    a = [s.a for s in segs]
+    b = [s.b for s in segs]
+    @gp :- real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
+    @gp :- "set size ratio -1"
+end
+plot(seg::Segment) = plot([seg])       # handle single segment
+plot!(seg::Segment) = plot!([seg])
+

@@ -2,26 +2,26 @@ module Int1DBZ
 """
 Int1DBZ: 1D Brillouin zone integration, comparing a variety of methods.
 
-A H Barnett, June 2023. Based off of simpler subset of Cont1DBZ.jl
+A H Barnett, June 2023. Based off simpler subset of Cont1DBZ, QuadGK
 """
 
 using OffsetArrays
 using LinearAlgebra
 using Printf
 using PolynomialRoots     # low-order faster roots
-using FourierSeriesEvaluators: fourier_contract     # LXVM
 
 using LoopVectorization    # for @avx in evaluators
 export evalh, evalh_ref, fourier_kernel
 include("evaluators.jl")
 
 using QuadGK         # SGJ
-export realadap, realadap_lxvm
+export realadap, realadap_lxvm, realmyadap
 include("integrators.jl")
 
 using DataStructures
 import Base.Order.Reverse
-export Segment, gkrule, applyrule, miniquadgk
+using Gnuplot
+export Segment, gkrule, applyrule, miniquadgk, plot
 include("miniquadgk.jl")
 
 

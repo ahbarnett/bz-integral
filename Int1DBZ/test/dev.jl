@@ -1,19 +1,17 @@
 using Int1DBZ
-#using Test
 using Printf
 using OffsetArrays
 using LinearAlgebra
-
+using Random.Random
 using TimerOutputs
 
+# just sandbox for now, not using Test
 #@testset "evaluators" begin
-#    
 #    @test 
 #end
-# need a way to make @test verbose to see results !
+# ... would need a way to make @test verbose to see results ! :(
 
-# just sandbox for now
-
+Random.seed!(0)
 M=10         # max mag Fourier freq index
 hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # F-coeffs of h(x)
 hm = (hm + conj(reverse(hm)))/2                     # make h(x) real for x Re
@@ -31,18 +29,18 @@ end
 
 TIME = TimerOutput()
 η=1e-6; ω=0.5; tol=1e-8;
-@printf "\nConventional quadrature (eta>0, obvi):\n"
+@printf "\nConventional quadrature via QuadGK:\n"
 @printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
 @printf "\tAa = "; println(Aa)
-TIME(realadap)(hm,ω,η,tol=tol, verb=1)
+TIME(realadap)(hm,ω,η,tol=tol)
 @printf "test realadap_lxvm for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Al = realadap_lxvm(hm,ω,η,tol=tol, verb=1)
-@printf "\tAl = "; println(Aa)
-TIME(realadap_lxvm)(hm,ω,η,tol=tol, verb=1)
-print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
+@printf "\tAl = "; println(Al)
+TIME(realadap_lxvm)(hm,ω,η,tol=tol)
 
-@printf "miniquadgk...\n"
+#=
+@printf "miniquadgk plain...\n"
 f(x) = sin(3*x+1)
 F(x) = -cos(3*x+1)/3
 Ie = F(1)-F(-1)
@@ -53,13 +51,29 @@ seg = applyrule(f,-1.0,1.0,r)
 a,b = 0.0,6.0
 Ie = F(b)-F(a)
 I, E, segs, numevals = miniquadgk(f,a,b)
-@printf "\tminiquadgk err %.3g, vs reported E %.3g\n" I-Ie E
+@printf "\tminiquadgk(%d fevals) err %.3g, \testim E %.3g\n" numevals I-Ie E
 I, E, segs, numevals = miniquadgk(f,a,b,rtol=1e-12)
-@printf "\tminiquadgk err %.3g, vs reported E %.3g\n" I-Ie E
+@printf "\tminiquadgk(%d fevals) err %.3g, \testim E %.3g\n" numevals I-Ie E
+=#
+
+f(x::Number) = inv(complex(ω,η) - fourier_kernel(hm,x));  # integrand for 1DBZ
+@printf "test miniquadgk for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
+Am, E, segs, numevals = miniquadgk(f,0.0,2π,rtol=tol)    # NOT for timing
+# ... since f is not "interpolated". Would need to define f in a function
+@printf "\tAm = "; println(Am)
+@printf "\t\tabs(Am-Aa)=%.3g\n" abs(Am-Aa)
+Am, E, segs, numevals = realmyadap(hm,ω,η,tol=tol)
+@printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
+TIME(realmyadap)(hm,ω,η,tol=tol)
+print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
+#plot(segs)
 
 #=
+@printf "1-seg, f = 1/g, pole subtract...\n"
 d = 0.1
 z0 = 0.3+1im*d
 f(x) = sin(x)/(x-z0)
 r = gkrule()
 =#
+
+
