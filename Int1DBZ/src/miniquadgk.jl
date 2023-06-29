@@ -172,14 +172,20 @@ function plot(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
     a = [s.a for s in segs]
     b = [s.b for s in segs]
     @gp real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
-    @gp :- "set size ratio -1"
+    xmax = maximum([a;b])
+    xmin = minimum([a;b])
+    y0 = 0.3*(xmax-xmin)     # y range to view
+    @gp :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
 end
 function plot!(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
     # add to current plot
     a = [s.a for s in segs]
     b = [s.b for s in segs]
     @gp :- real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
-    @gp :- "set size ratio -1"
+    xmax = maximum([a;b])
+    xmin = minimum([a;b])
+    y0 = 0.3*(xmax-xmin)     # y range to view
+    @gp :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
 end
 plot(seg::Segment) = plot([seg])       # handle single segment
 plot!(seg::Segment) = plot!([seg])

@@ -6,9 +6,7 @@ A H Barnett, June 2023. Based off simpler subset of Cont1DBZ, QuadGK
 """
 
 using OffsetArrays
-using LinearAlgebra
 using Printf
-using PolynomialRoots     # low-order faster roots
 
 using LoopVectorization    # for @avx in evaluators
 export evalh, evalh_ref, fourier_kernel
@@ -24,5 +22,9 @@ using Gnuplot
 export Segment, gkrule, applyrule!, miniquadgk, plot
 include("miniquadgk.jl")
 
+using PolynomialRoots     # low-order faster roots
+using LinearAlgebra
+export find_near_roots
+include("complex.jl")
 
 end # module Int1DBZ

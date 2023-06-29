@@ -79,7 +79,7 @@ f(x::Number) = 1.0/g(x)
 resf0 = 1.0/gp(z0)     # residue of f at its pole
 a,b = -1.0,1.0
 Im, Em, segs, numevals = miniquadgk(f,a,b,rtol=1e-10);  # right ans, slow
-plot(segs); @gp :- real(z0) imag(z0) "w p pt 1 ps 2"
+plot(segs); @gp :- real(z0) imag(z0) "w p pt 1 ps 2 tit 'z_0'"
 r = gkrule()
 fwrk = Vector{ComplexF64}(undef,32);
 s = applyrule!(fwrk,f,a,b,r)
@@ -87,5 +87,7 @@ s = applyrule!(fwrk,f,a,b,r)
 pole(x) = resf0./(x-z0)
 sc = applyrule!(fwrk,x->f(x)-pole(x),a,b,r)
 Ic = sc.I + resf0*log((b-z0)/(a-z0))
-@printf "\tcorr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
-
+@printf "\tknown-pole corr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
+fj = f.(r.x)    # since [-1,1]
+ifj = 1.0./fj   # samples of analytic func
+rs, ders = find_near_roots(ifj, r.x)
