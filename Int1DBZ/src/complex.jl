@@ -30,7 +30,7 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0)
     derivs = zero(roots)              # initialize deriv vals
     for (i,r) in enumerate(roots)
         derc = c[2:end] .* (1:n-1)    # coeffs of deriv of poly
-        derivs[i] = horner(r,derc)    # eval at root
+        derivs[i] = horner(r,derc)    # eval at root (** fix speed n-template?)
     end
     return roots, derivs
 end
@@ -40,8 +40,13 @@ end
 horner(x::Number)=zero(x)
 horner(x::Number,p1::Number)=p1
 horner(x::Number,p1::Number,p...)=muladd(x,horner(x,p...),p1)  # labeled splat p
-# handle coeff vector rather than list of args, by splat...
+# handle coeff vector rather than list of args, by splat...  slows it down :(
 horner(x::Number,c::Vector)=horner(x,c...)
 # handle array arg x...
 horner(x::AbstractArray,args...) = map(y -> horner(y,args...), x)
-
+# Timing expts...
+#a = rand(32); x = rand()
+#julia> @btime horner($x,$a);
+#  17.944 μs (654 allocations: 13.97 KiB)      <- splatting each time = bad
+#julia> @btime horner($x,$(a...));
+#  2.083 ns (0 allocations: 0 bytes)

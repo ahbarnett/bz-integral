@@ -47,8 +47,8 @@ F(x) = -cos(3*x+1)/3
 Ie = F(1)-F(-1)
 r = gkrule()
 @printf "\t1-seg G-err %.3g, K err %.3g\n" sum(r.gw.*f.(r.x[2:2:end]))-Ie sum(r.w.*f.(r.x))-Ie
-seg = applyrule(f,-1.0,1.0,r)
-@printf "\t1-seg (applyrule) I=%.12g E=%.3g\n" seg.I seg.E
+seg = applygkrule(f,-1.0,1.0,r)
+@printf "\t1-seg (applygkrule) I=%.12g E=%.3g\n" seg.I seg.E
 a,b = 0.0,6.0
 Ie = F(b)-F(a)
 I, E, segs, numevals = miniquadgk(f,a,b)
@@ -69,33 +69,45 @@ TIME(realmyadap)(hm,ω,η,tol=tol)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 #plot(segs)
 
+#=
+using BenchmarkTools
+BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
+@btime realmyadap(hm,ω,η,tol=tol);
+#  842.324 μs (14354 allocations: 515.05 KiB)
+@btime realadap_lxvm(hm,ω,η,tol=tol);
+#  551.587 μs (8 allocations: 36.81 KiB)
+=#
 
 @printf "1-seg, f = 1/g, try pole subtract... vs 1e-10 tol numer quadr\n"
 d = 1e-3
 z0 = 0.3+1im*d
-g(x) = sin(x-z0)       # complex sin, root @ z0.  Next root dist ~1.8 from [a,b]
-gp(x) = cos(x-z0)      # g'
+g(x) = 2*sin(x-z0)     # complex sin, root @ z0.  Next root dist ~1.8 from [a,b]
+gp(x) = 2*cos(x-z0)    # g'
 f(x::Number) = 1.0/g(x)
 resf0 = 1.0/gp(z0)     # residue of f at its pole
-a,b = -1.0,1.0
+a,b = -1.0,0.5
 Im, Em, segs, numevals = miniquadgk(f,a,b,rtol=1e-10);  # right ans, slow
-plot(segs); @gp :- real(z0) imag(z0) "w p pt 1 ps 2 tit 'z_0'"
+#plot(segs); @gp :- real(z0) imag(z0) "w p pt 1 ps 2 tit 'z_0'"
 r = gkrule()
-fwrk = Vector{ComplexF64}(undef,32);
-s = applyrule!(fwrk,f,a,b,r)
+s = applygkrule(f,a,b,r)    # crude version w/ allocs
 @printf "\tdumb uncorr 1-seg err %.3g (claimed E %.3g)\n" abs(s.I-Im) s.E
 pole(x) = resf0./(x-z0)
-sc = applyrule!(fwrk,x->f(x)-pole(x),a,b,r)
-Ic = sc.I + resf0*log((b-z0)/(a-z0))
+sc = applygkrule(x->f(x)-pole(x), a,b,r)  # pole-sub func
+Ic = sc.I + resf0*log((b-z0)/(a-z0))      # add exact pole integral
 @printf "\tknown-pole corr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
 # now fit roots & use resulting extracted residues...
-fj = f.(r.x)    # our data on seg, since [-1,1]
+mid, sca = (b+a)/2, (b-a)/2
+xj = mid .+ sca*r.x
+fj = f.(xj)       # our data on seg
 ifj = 1.0./fj   # samples of analytic func
 rs, ders = find_near_roots(ifj, r.x)
-rs = rs[1]
-ders = ders[1]
-resfr = 1.0/ders
-polej = @. resfr/(r.x-rs)   # pole vals at nodes
-Ic = sum(r.w.*(fj.-polej)) + resfr*log((b-rs)/(a-rs))   # Ik for f-pole, + corr
-@printf "\tpole-fit corr 1-seg err %.3g\n" abs(Ic-Im)
+r0 = mid + sca*rs[1]; gp0 = ders[1]/sca;  # just treat 1st pole (there's only 1)
+@printf "\tpole fit loc err %.3g, g'(root) err %.3g\n" abs(r0-z0) abs(gp0-gp(z0))
+resfr = 1.0/gp0            # residue of f at its pole
+polej = @. resfr/(xj-r0)   # pole vals at nodes  (maybe rewrite in std coords?)
+sc = applygkrule(fj.-polej, a,b,r)       # pole-sub vals
+Ic = sc.I + resfr*log((b-r0)/(a-r0))     # add exact pole integral
+@printf "\tpole-fit corr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
+@printf "\n"
+
 
