@@ -88,6 +88,14 @@ pole(x) = resf0./(x-z0)
 sc = applyrule!(fwrk,x->f(x)-pole(x),a,b,r)
 Ic = sc.I + resf0*log((b-z0)/(a-z0))
 @printf "\tknown-pole corr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
-fj = f.(r.x)    # since [-1,1]
+# now fit roots & use resulting extracted residues...
+fj = f.(r.x)    # our data on seg, since [-1,1]
 ifj = 1.0./fj   # samples of analytic func
 rs, ders = find_near_roots(ifj, r.x)
+rs = rs[1]
+ders = ders[1]
+resfr = 1.0/ders
+polej = @. resfr/(r.x-rs)   # pole vals at nodes
+Ic = sum(r.w.*(fj.-polej)) + resfr*log((b-rs)/(a-rs))   # Ik for f-pole, + corr
+@printf "\tpole-fit corr 1-seg err %.3g\n" abs(Ic-Im)
+

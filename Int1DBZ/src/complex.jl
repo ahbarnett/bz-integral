@@ -24,16 +24,24 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0)
     # solve roots = (t+1/t)/2 to get t (Joukowsky map) values
     t = roots .+ sqrt.(roots.^2 .+ 1)
     rhos = abs.(log.(abs.(t)))        # Bernstein param for each root
-    nkeep = sum(rhos .< rho)          # then keep e^-rho < t < e^rho
-    inds = sortperm(rhos)[1:nkeep]       # indices to keep
+    nkeep = sum(rhos .< rho)          # then keep t with e^-rho < t < e^rho
+    inds = sortperm(rhos)[1:nkeep]    # indices to keep
     roots = roots[inds]
-    derivs = zero(roots)
+    derivs = zero(roots)              # initialize deriv vals
     for (i,r) in enumerate(roots)
-        derivs[i] = 0.0   # *** TO DO
+        derc = c[2:end] .* (1:n-1)    # coeffs of deriv of poly
+        derivs[i] = horner(r,derc)    # eval at root
     end
     return roots, derivs
 end
 
-#hornerpoly
-#hornerpolyd
+# Poly eval (from SGJ's 2019 JuliaCon talk)
+# see 27 mins into: https://www.youtube.com/watch?v=mSgXWpvQEHE
+horner(x::Number)=zero(x)
+horner(x::Number,p1::Number)=p1
+horner(x::Number,p1::Number,p...)=muladd(x,horner(x,p...),p1)  # labeled splat p
+# handle coeff vector rather than list of args, by splat...
+horner(x::Number,c::Vector)=horner(x,c...)
+# handle array arg x...
+horner(x::AbstractArray,args...) = map(y -> horner(y,args...), x)
 

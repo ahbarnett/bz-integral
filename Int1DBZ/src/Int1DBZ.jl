@@ -24,7 +24,7 @@ include("miniquadgk.jl")
 
 using PolynomialRoots     # low-order faster roots
 using LinearAlgebra
-export find_near_roots
+export find_near_roots, horner
 include("complex.jl")
 
 end # module Int1DBZ
