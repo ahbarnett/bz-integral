@@ -13,7 +13,7 @@ using Gnuplot
 # ... would need a way to make @test verbose to see results ! :(
 
 Random.seed!(0)
-M=10         # max mag Fourier freq index
+M=200         # max mag Fourier freq index
 hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # F-coeffs of h(x)
 hm = (hm + conj(reverse(hm)))/2                     # make h(x) real for x Re
 
@@ -29,7 +29,7 @@ for (t,x) in enumerate(xtest)
 end
 
 TIME = TimerOutput()
-η=1e-6; ω=0.5; tol=1e-8;
+η=1e-6; ω=0.5; tol=1e-6;  # 1e-8 too much for M=200 realadap to handle :(
 @printf "\nConventional quadrature via QuadGK:\n"
 @printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
 Aa = realadap(hm,ω,η,tol=tol, verb=1)
@@ -66,7 +66,7 @@ Am, E, segs, numevals = miniquadgk(f,0.0,2π,rtol=tol)    # NOT for timing
 Am, E, segs, numevals = realmyadap(hm,ω,η,tol=tol)
 @printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
 TIME(realmyadap)(hm,ω,η,tol=tol)
-rho0=0.5
+rho0=0.5      # seems to lose acc as approach rho0=1, where fast but O(1) bad!
 Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=rho0)
 @printf "test realquadinv (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
 @printf "\tAp = "; println(Ap)

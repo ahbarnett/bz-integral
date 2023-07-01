@@ -78,12 +78,14 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     end        
     r = gkrule()       # make a default panel rule
     n = length(r.gw)   # num embedded Gauss nodes, overall "order" n
+    V = r.x.^(0:2n)'   # Vandermonde
+    fac = lu(V)        # factor it only once
     numevals = 2n+1
     mid, sca = (b+a)/2, (b-a)/2
     gvals = Vector{ComplexF64}(undef,2n+1)
     gvals = map(x -> g(mid + sca*x), r.x)  # (see miniquadgk for reason)
     ginvals = 1.0./gvals                   # also allocs
-    segs = applypolesub!(gvals,ginvals,a,b,r,rho=rho,verb=verb)    # kick off adapt via mother seg
+    segs = applypolesub!(gvals,ginvals,a,b,r,rho=rho,verb=verb,fac=fac)    # kick off adapt via mother seg
     #println(segs)
     I, E = segs.I, segs.E          # keep global estimates which get updated
     segs = [segs]                  # heap needs to be Vector
@@ -93,12 +95,12 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
         mid, sca = (split+s.a)/2, (split-s.a)/2
         gvals = map(x -> g(mid + sca*x), r.x)
         ginvals = 1.0./gvals
-        s1 = applypolesub!(gvals,ginvals, s.a,split, r,rho=rho,verb=verb)
+        s1 = applypolesub!(gvals,ginvals, s.a,split, r,rho=rho,fac=fac,verb=verb)
         #println(s1)
         mid, sca = (s.b+split)/2, (s.b-split)/2
         gvals = map(x -> g(mid + sca*x), r.x)
         ginvals = 1.0./gvals
-        s2 = applypolesub!(gvals,ginvals, split,s.b, r,rho=rho,verb=verb)
+        s2 = applypolesub!(gvals,ginvals, split,s.b, r,rho=rho,verb=verb,fac=fac)
         #println(s2)
         numevals += 2*(2n+1)
         I += -s.I + s1.I + s2.I    # update global integral and err
@@ -110,14 +112,14 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
 end
 
 function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
-                      b::Number, r::gkrule; rho=1.0, verb=0)
+                      b::Number, r::gkrule; rho=1.0, verb=0, fac=nothing)
 # pole-correcting version of applygkrule. Changes the input ginvals array.
 # no g eval; just pass in all vals and inverse vals (thinking to matrix case)
 # Barnett 6/30/23
     @assert length(gvals)==length(ginvals)
     s = applygkrule(ginvals,a,b,r)          # create Segment w/ GK ans for (a,b)
     # now work in local coords wrt std seg [-1,1]...
-    zr, dgdt = find_near_roots(gvals,r.x,rho=rho)  # roots, g'(roots)
+    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac)  # roots, g'(roots)
     Ipoles = zero(I)
     #println("before corr, ginvals = ",ginvals)
     for (i,z) in enumerate(zr)     # loop over roots of g, change user's ginvals

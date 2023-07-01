@@ -1,6 +1,6 @@
-function find_near_roots(vals::Vector, nodes::Vector; rho=1.0)
+function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     """
-    roots, derivs = find_near_roots(vals, nodes; rho=1.0)
+    roots, derivs = find_near_roots(vals, nodes; rho=1.0, fac=nothing)
 
     Returns complex-valued roots of unique polynomial approximant
     g(z) matching the vector of `vals` at the vector `nodes`.
@@ -18,19 +18,26 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0)
     Alex Barnett 6/29/23.
     """
     n = length(nodes)
-    V = nodes.^(0:n-1)'   # Vandermonde
-    c = V\vals            # solve monomial coeffs  *** to do precomp factor V
-    roots = PolynomialRoots.roots(c)       # find all roots
+    if isnothing(fac)
+        V = nodes.^(0:n-1)'  # Vandermonde
+        c = V \ vals         # solve monomial coeffs (4us for 15 nodes)
+    else
+        c = fac \ vals       # solve via passed-in LU factorization of V (1.5us)
+    end
+    roots = PolynomialRoots.roots(c)       # find all roots (10us)
+    #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4us)
     # solve roots = (t+1/t)/2 to get t (Joukowsky map) values
+    # (3us for middle bit...)
     t = roots .+ sqrt.(roots.^2 .+ 1)
     rhos = abs.(log.(abs.(t)))        # Bernstein param for each root
     nkeep = sum(rhos .< rho)          # then keep t with e^-rho < t < e^rho
     inds = sortperm(rhos)[1:nkeep]    # indices to keep
     roots = roots[inds]
     derivs = zero(roots)              # initialize deriv vals
+    # following 4us per root
     for (i,r) in enumerate(roots)
         derc = c[2:end] .* (1:n-1)    # coeffs of deriv of poly
-        derivs[i] = horner(r,derc)    # eval at root (** fix speed n-template?)
+        derivs[i] = horner(r,derc...) # eval at root (** fix speed n-template?)
     end
     return roots, derivs
 end
