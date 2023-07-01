@@ -122,6 +122,7 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
     mid, sca = (b+a)/2, (b-a)/2
     # fact that next two lines needed to match quadgk, not plain f.(..), lame:
     fvals = Vector{ComplexF64}(undef,2n+1) # plain fvals=f.(..) worse than this
+    # is fvals alloc needed?
     fvals = map(x -> f(mid + sca*x), r.x)  # as good as explicit loop, no alloc
     # fvals .= f.(mid .+ sca*r.x)   # fill prealloc via .= but cause alloc slow!
     segs = applygkrule(fvals,a,b,r)      # kick off adapt via eval mother seg
@@ -138,7 +139,7 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
         heappush!(segs, s1, Reverse)
         heappush!(segs, s2, Reverse)
     end
-    # (resum as SGJ?)
+    # to do *** resum as SGJ?
     return I, E, segs, numevals
 end
 

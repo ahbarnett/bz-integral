@@ -12,8 +12,9 @@ using LoopVectorization    # for @avx in evaluators
 export evalh, evalh_ref, fourier_kernel
 include("evaluators.jl")
 
-using QuadGK         # SGJ
-export realadap, realadap_lxvm, realmyadap
+using QuadGK         # SGJ Pkg
+export realadap, realadap_lxvm, realmyadap, applypolesub!, adaptquadinv
+export realquadinv
 include("integrators.jl")
 
 using DataStructures

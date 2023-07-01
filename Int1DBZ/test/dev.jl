@@ -66,6 +66,12 @@ Am, E, segs, numevals = miniquadgk(f,0.0,2π,rtol=tol)    # NOT for timing
 Am, E, segs, numevals = realmyadap(hm,ω,η,tol=tol)
 @printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
 TIME(realmyadap)(hm,ω,η,tol=tol)
+rho0=0.5
+Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=rho0)
+@printf "test realquadinv (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
+@printf "\tAp = "; println(Ap)
+@printf "\t\tabs(Ap-Aa)=%.3g\n" abs(Ap-Aa)
+TIME(realquadinv)(hm,ω,η,tol=tol,rho=rho0)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 #plot(segs)
 
@@ -73,7 +79,8 @@ print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
 @btime realmyadap(hm,ω,η,tol=tol);
-#  842.324 μs (14354 allocations: 515.05 KiB)
+# Before allocated fvals in type-stable way: 842.324 μs (14354 allocations: 515.05 KiB)
+# After:  552.549 μs (17 allocations: 45.52 KiB)      good enough
 @btime realadap_lxvm(hm,ω,η,tol=tol);
 #  551.587 μs (8 allocations: 36.81 KiB)
 =#
@@ -108,6 +115,10 @@ polej = @. resfr/(xj-r0)   # pole vals at nodes  (maybe rewrite in std coords?)
 sc = applygkrule(fj.-polej, a,b,r)       # pole-sub vals
 Ic = sc.I + resfr*log((b-r0)/(a-r0))     # add exact pole integral
 @printf "\tpole-fit corr 1-seg err %.3g (claimed E %.3g)\n" abs(Ic-Im) sc.E
+# test self-contained func version...
+sc = applypolesub!(ifj,fj,a,b,r)
+@printf "\tapplypolesub 1-seg err %.3g (claimed E %.3g)\n" abs(sc.I-Im) sc.E
+Ap,E,segs,numevals=adaptquadinv(g,a,b)
+@printf "\tadaptquadinv err %.3g (%d segs, claimed E %.3g)\n" abs(Ap-Im) length(segs) E
 @printf "\n"
-
 
