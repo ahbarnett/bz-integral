@@ -35,9 +35,9 @@ realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) = realadap(hm, ω, η; tol=tol, verb
     hm is given by offsetvector of Fourier series. tol controls rtol.
     Scalar `h(x)` only
 """
-function realmyadap(hm,ω,η; tol=1e-8)
+function realmyadap(hm,ω,η; tol=1e-8, ab=[0.0,2π])
     f(x::Number) = inv(complex(ω,η) - fourier_kernel(hm,x))
-    return miniquadgk(f,0.0,2π,rtol=tol)
+    return miniquadgk(f,ab[1],ab[2],rtol=tol)
 end
 
 
@@ -50,9 +50,9 @@ end
     hm is given by offsetvector of Fourier series. tol controls rtol.
     Scalar `h(x)` only for now.
 """
-function realquadinv(hm,ω,η; tol=1e-8,rho=1.0,verb=0)
+function realquadinv(hm,ω,η; tol=1e-8, rho=1.0, verb=0, ab=[0.0,2π])
     g(x::Number) = complex(ω,η) - fourier_kernel(hm,x)
-    return adaptquadinv(g,0.0,2π,rtol=tol,rho=rho,verb=verb)
+    return adaptquadinv(g,ab[1],ab[2],rtol=tol,rho=rho,verb=verb)
 end
 
 
@@ -91,6 +91,7 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     segs = [segs]                  # heap needs to be Vector
     while E>atol && E>rtol*abs(I) && numevals<maxevals
         s = heappop!(segs, Reverse)            # get worst seg
+        (verb>0) && @printf "adaptquadinv tot E=%.3g, splitting (%g,%g) of meth=%d:\n" E s.a s.b s.meth
         split = (s.b+s.a)/2
         mid, sca = (split+s.a)/2, (split-s.a)/2
         gvals = map(x -> g(mid + sca*x), r.x)
@@ -117,14 +118,19 @@ function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
 # no g eval; just pass in all vals and inverse vals (thinking to matrix case)
 # Barnett 6/30/23
     @assert length(gvals)==length(ginvals)
-    s = applygkrule(ginvals,a,b,r)          # create Segment w/ GK ans for (a,b)
+    s = applygkrule(ginvals,a,b,r)   # create Segment w/ plain GK ans for (a,b)
     # now work in local coords wrt std seg [-1,1]...
-    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac)  # roots, g'(roots)
+    # get roots, g'(roots)  ...n seems good max # roots to pole-sub @ 2n+1 pts
+    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac,maxnroots=length(r.gw))
+    (verb>0) && @printf "\tapplypole sub (%g,%g):\t%d roots\n" a b length(zr)
+    if length(zr)==0 || isnothing(dgdt)
+        return s        # either nothing to do, or don't pole-sub too much!
+    end
     Ipoles = zero(I)
     #println("before corr, ginvals = ",ginvals)
     for (i,z) in enumerate(zr)     # loop over roots of g, change user's ginvals
         Res_ginv = 1.0/dgdt[i]     # residue of 1/g
-        (verb>0) && println("   pole ",i," ",z,"    ",Res_ginv)
+        (verb>0) && println("\t   pole #",i," z=",z) #,",  res =",Res_ginv)
         #println("pole vals = ",Res_ginv./(r.x .- z))
         @. ginvals -= Res_ginv/(r.x - z)    # subtract each pole off 1/g vals
         Ipoles += Res_ginv * log((1.0-z)/(-1.0-z))  # add analytic pole integral
@@ -132,14 +138,14 @@ function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
         #println("Ipoles = ",Ipoles)
     end
     sp = applygkrule(ginvals,a,b,r)   # GK on corr 1/g vals, another Segment ***
-    (verb>0) && println(sp.E, " <? ", s.E)
-    if sp.E < s.E
-#        sp.meth = 2            # pole sub worked, record this
-        sca = (b-a)/2
-#        sp.I += sca*Ipoles     # add (scaled) effect of poles
-        #        return sp
-        return Segment(a,b, sp.I+sca*Ipoles, sp.E, 2)    # immutable??
+    (verb>0) && println("\t", sp.E, "(meth=2) <? ", s.E, "(plain GK)")
+    if sp.E > s.E
+        return s                # error not improved, revert to plain GK
     else
-        return s               # revert to plain GK
+        sca = (b-a)/2
+        # sp.meth = 2           # pole sub worked, record it... no, immutable!
+        # sp.I += sca*Ipoles    # add (scaled) effect of poles
+        # return sp             # that idea failed :(
+        return Segment(a,b, sp.I+sca*Ipoles, sp.E, 2)  # immutable => new seg :(
     end
 end

@@ -146,26 +146,26 @@ end
 
 # --------- plotting segments ---------------------------------------------
 
-function plot(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
-    # start a new plot
+function plot(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
+    # start a new plot in session :figname
     a = [s.a for s in segs]
     b = [s.b for s in segs]
-    @gp real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
+    @gp session real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
     xmax = maximum([a;b])
     xmin = minimum([a;b])
     y0 = 0.3*(xmax-xmin)     # y range to view
-    @gp :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
+    @gp session :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
 end
-function plot!(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
-    # add to current plot
+function plot!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
+    # add to current plot in session :figname
     a = [s.a for s in segs]
     b = [s.b for s in segs]
-    @gp :- real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
+    @gp session :- real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
     xmax = maximum([a;b])
     xmin = minimum([a;b])
     y0 = 0.3*(xmax-xmin)     # y range to view
-    @gp :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
+    @gp session :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
 end
-plot(seg::Segment) = plot([seg])       # handle single segment
-plot!(seg::Segment) = plot!([seg])     # "
+plot(seg::Segment,args...) = plot([seg],args...)       # handle single segment
+plot!(seg::Segment,args...) = plot!([seg],args...)     # "
 
