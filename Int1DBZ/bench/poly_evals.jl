@@ -26,3 +26,5 @@ p = rand(ComplexF64,15)   # coeffs
 @btime horner(0.7,$(p...));  # 2.3 ns  0bytes    <-fastest, compiles for degree?
 @btime Base.evalpoly(0.7,$p);  # 14 ns 0bytes ... penalty for unknown length
 @btime Base.evalpoly(0.7,$(tuple(p...)));   # 5ns 0bytes
+
+# see https://discourse.julialang.org/t/improving-computational-performance/63210

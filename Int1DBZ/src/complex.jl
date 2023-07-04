@@ -1,8 +1,6 @@
-function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing,
-                         maxnroots=1000)
+function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     """
-    roots, derivs = find_near_roots(vals, nodes; rho=1.0, fac=nothing,
-                                    maxnroots=Inf)
+    roots, derivs = find_near_roots(vals, nodes; rho=1.0, fac=nothing)
 
     Returns complex-valued roots of unique polynomial approximant g(z)
     matching the vector of `vals` at the vector `nodes`.  The nodes
@@ -13,13 +11,10 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing,
 
     `rho > 0.0` sets the Bernstein ellipse parameter within which to keep
     roots. Recall that the ellipse for the standard segment `[-1,1]` has
-    semiaxes `cosh(rho)` and `sinh(rho)`.
+    semiaxes `cosh(rho)` horizontally and `sinh(rho)` vertically.
 
     `fac` allows user to pass in a pre-factorized (eg LU) object for
     the Vandermonde matrix. This accelerates things by 3us for 15 nodes.
-
-    `maxnroots` prevents the derivative calc being done if more than
-    this many roots are kept. `derivs` is then an empty array.
 
     To do:
     1) template so compiles for known n (speed up roots? poly eval?)
@@ -38,18 +33,15 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing,
     #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4-5us)
     #roots = AMRVW.roots(c)                # 10x slower (~100us)
     #roots = roots_companion(reverse(c))   # also 10x slower (~100us)
-    #return roots, nothing   # exit for speed test of c-solve + roots only
-    # Now solve roots = (t+1/t)/2 to get t (Joukowsky map) values (<2us)
+    #return roots, empty(roots)   # exit for speed test of c-solve + roots only
+    # Solve roots = (t+1/t)/2 to get t (Joukowsky map) values (1 us)
     t = @. roots + sqrt(roots^2 - 1.0)
     rhos = abs.(log.(abs.(t)))        # Bernstein param for each root
     nkeep = sum(rhos .< rho)          # then keep t with e^-rho < t < e^rho
     inds = sortperm(rhos)[1:nkeep]    # indices to keep
     roots = roots[inds]
-    if nkeep>maxnroots
-        return roots, empty(roots)   # type-stable exit w/o derivs calc
-    end
     derivs = zero(roots)              # initialize deriv vals
-    for (i,r) in enumerate(roots)
+    for (i,r) in enumerate(roots)     # (1.3us for 14 roots degree 14)
         derc = c[2:end] .* (1:n-1)          # coeffs of deriv of poly
         derivs[i] = Base.evalpoly(r,derc)   # eval at root (14 ns)
     end

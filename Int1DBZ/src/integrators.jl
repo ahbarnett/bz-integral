@@ -121,9 +121,9 @@ function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
     s = applygkrule(ginvals,a,b,r)   # create Segment w/ plain GK ans for (a,b)
     # now work in local coords wrt std seg [-1,1]...
     # get roots, g'(roots)  ...n seems good max # roots to pole-sub @ 2n+1 pts
-    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac,maxnroots=length(r.gw))
+    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac)
     (verb>0) && @printf "\tapplypole sub (%g,%g):\t%d roots\n" a b length(zr)
-    if length(zr)==0 || isnothing(dgdt)
+    if length(zr)==0 || length(zr)>length(r.gw)
         return s        # either nothing to do, or don't pole-sub too much!
     end
     Ipoles = zero(I)
