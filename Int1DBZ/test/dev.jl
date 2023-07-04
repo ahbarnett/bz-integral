@@ -1,4 +1,5 @@
-# development and tests for Int1DBZ tools
+# main development and testing area for Int1DBZ ideas.
+# Barnett June-July 2023
 using Int1DBZ
 using Printf
 using OffsetArrays
@@ -7,7 +8,7 @@ using Random.Random
 using TimerOutputs
 using Gnuplot
 
-M=200            # max mag Fourier freq index (200 to make fevals slow)
+M=20            # max mag Fourier freq index (200 to make fevals slow)
 η=1e-6; ω=0.5; tol=1e-7;  # 1e-8 too much for M=200 realadap to handle :(
 verb = 0
 Random.seed!(0)         # set up 1D BZ h(x) for denominator

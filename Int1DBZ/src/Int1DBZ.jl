@@ -24,7 +24,7 @@ include("miniquadgk.jl")
 using PolynomialRoots     # low-order faster roots
 using AMRVW               # reliable roots in O(N^2)
 using LinearAlgebra
-export find_near_roots, horner, shifted_fourier_series_roots
+export find_near_roots, horner, shifted_fourier_series_roots, roots_companion
 include("complex.jl")
 
 using QuadGK         # SGJ Pkg

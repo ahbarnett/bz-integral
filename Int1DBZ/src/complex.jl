@@ -1,24 +1,31 @@
 function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing,
-                         maxnroots=10)
+                         maxnroots=1000)
     """
     roots, derivs = find_near_roots(vals, nodes; rho=1.0, fac=nothing,
-                                    maxnroots=10)
+                                    maxnroots=Inf)
 
-    Returns complex-valued roots of unique polynomial approximant
-    g(z) matching the vector of `vals` at the vector `nodes`.
-    The nodes are assumed to be well-chosen for interpolation on [-1,1].
-    'roots' are returned in order of increasing (Bernstein) distance from
-    the interval [-1,1]. Also, if there are no more than `maxnroots` roots
-    found in the correct rho range, it computes 'derivs', the values of
-    g' at each root. (Otherwise `derivs = nothing`).
+    Returns complex-valued roots of unique polynomial approximant g(z)
+    matching the vector of `vals` at the vector `nodes`.  The nodes
+    are assumed to be well-chosen for interpolation on [-1,1].
+    'roots' are returned in order of increasing (Bernstein) distance
+    from the interval [-1,1]. It also computes 'derivs', the
+    corresponding values of g' at each kept root.
 
     `rho > 0.0` sets the Bernstein ellipse parameter within which to keep
     roots. Recall that the ellipse for the standard segment `[-1,1]` has
     semiaxes `cosh(rho)` and `sinh(rho)`.
 
-    To do: compare Boyd version using Cheby points (needs twice the degree)
+    `fac` allows user to pass in a pre-factorized (eg LU) object for
+    the Vandermonde matrix. This accelerates things by 3us for 15 nodes.
 
-    Alex Barnett 6/29/23.
+    `maxnroots` prevents the derivative calc being done if more than
+    this many roots are kept. `derivs` is then an empty array.
+
+    To do:
+    1) template so compiles for known n (speed up roots? poly eval?)
+    2) compare Boyd version using Cheby points (needs twice the degree)
+
+    Alex Barnett 6/29/23 - 7/4/23
     """
     n = length(nodes)
     if isnothing(fac)
@@ -27,43 +34,27 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing,
     else
         c = fac \ vals       # solve via passed-in LU factorization of V (1.5us)
     end
-    roots = PolynomialRoots.roots(c)       # find all roots (10us)
-    #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4us)
-    #roots = AMRVW.roots(c)           # is slower
-    # solve roots = (t+1/t)/2 to get t (Joukowsky map) values
-    # (3us for middle bit...)
+    roots = PolynomialRoots.roots(c)       # find all roots (typ 7-10us)
+    #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4-5us)
+    #roots = AMRVW.roots(c)                # 10x slower (~100us)
+    #roots = roots_companion(reverse(c))   # also 10x slower (~100us)
+    #return roots, nothing   # exit for speed test of c-solve + roots only
+    # Now solve roots = (t+1/t)/2 to get t (Joukowsky map) values (<2us)
     t = @. roots + sqrt(roots^2 - 1.0)
     rhos = abs.(log.(abs.(t)))        # Bernstein param for each root
     nkeep = sum(rhos .< rho)          # then keep t with e^-rho < t < e^rho
     inds = sortperm(rhos)[1:nkeep]    # indices to keep
     roots = roots[inds]
     if nkeep>maxnroots
-        return roots, nothing         # exit without derivs calc
+        return roots, empty(roots)   # type-stable exit w/o derivs calc
     end
     derivs = zero(roots)              # initialize deriv vals
-    # following 4us per root, ... *** speep up via template / SA in n?
     for (i,r) in enumerate(roots)
-        derc = c[2:end] .* (1:n-1)    # coeffs of deriv of poly
-        derivs[i] = horner(r,derc...) # eval at root (** fix speed n-template?)
+        derc = c[2:end] .* (1:n-1)          # coeffs of deriv of poly
+        derivs[i] = Base.evalpoly(r,derc)   # eval at root (14 ns)
     end
     return roots, derivs
 end
-
-# Poly eval (from SGJ's 2019 JuliaCon talk)
-# see 27 mins into: https://www.youtube.com/watch?v=mSgXWpvQEHE
-horner(x::Number)=zero(x)
-horner(x::Number,p1::Number)=p1
-horner(x::Number,p1::Number,p...)=muladd(x,horner(x,p...),p1)  # labeled splat p
-# handle coeff vector rather than list of args, by splat...  slows it down :(
-horner(x::Number,c::Vector)=horner(x,c...)
-# handle array arg x...
-horner(x::AbstractArray,args...) = map(y -> horner(y,args...), x)
-# Timing expts...
-#a = rand(32); x = rand()
-#julia> @btime horner($x,$a);
-#  17.944 μs (654 allocations: 13.97 KiB)      <- splatting each time = bad
-#julia> @btime horner($x,$(a...));
-#  2.083 ns (0 allocations: 0 bytes)
 
 function shifted_fourier_series_roots(hm,ω,η)
     """
@@ -83,3 +74,34 @@ function shifted_fourier_series_roots(hm,ω,η)
     x = @. mod(real(x),2π) + im*imag(x)    # fold Re to [0,2π), for humans
     return x
 end
+
+"""
+    roots_companion(a)
+
+    find all complex roots of polynomial a[1]*z^n + a[2]*z^(n-1) + ... + a[n+1]
+    via companion matrix EVP in O(n^3) time. Similar to MATLAB roots.
+    Note poly coeffs are in reverse order that in many Julia pkgs.
+    If the entire C plane is a root, returns [complex(NaN)].
+
+    Local reference implementation; superceded by other pkgs.
+"""
+function roots_companion(a::AbstractVector{<:Number})
+    # does not allow dims>1 arrays
+    a = complex(a)          # idempotent, unlike Complex{T} for T a type...
+    T = eltype(a)
+    while length(a)>1 && a[1]==0.0         # gobble up any zero leading coeffs
+        a = a[2:end]
+    end
+    if isempty(a) || (a==[0.0])            # done, meaningless
+        return [complex(NaN)]     # array, for type stability. signifies all C
+    end
+    deg = length(a)-1       # a is now length>1 with nonzero 1st entry
+    if deg==0
+        return T[]          # done: empty list of C-#s
+    end
+    a = reshape(a[deg+1:-1:2] ./ a[1],(deg,1))    # make monic, col and flip
+    C = [ [zeros(T,1,deg-1); Matrix{T}(I,deg-1,deg-1)] -a ]   # stack companion mat
+    # at this point we want case of real C to be possible, faster than complex
+    complex(eigvals!(C))    # overwrite C, and we don't want the vectors
+end
+# Note re don't need evecs: see also LinearAlgebra.LAPACK.geev!
