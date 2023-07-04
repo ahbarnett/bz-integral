@@ -10,7 +10,7 @@ using Gnuplot
 
 M=100            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5; tol=1e-7;  # 1e-8 too much for M=200 realadap to handle :(
-verb = 1
+verb = 0
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
 hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # F-coeffs of h(x)
 hm = (hm + conj(reverse(hm)))/2                     # make h(x) real for x Re

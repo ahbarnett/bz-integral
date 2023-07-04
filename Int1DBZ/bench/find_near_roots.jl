@@ -21,5 +21,5 @@ roots,derivs = find_near_roots(y, r.x, fac=fac); println(length(roots)) # warmup
 
 # with fac: 1.6us for solve c.
 # roots: varies from 0us (no roots) thru 10us (typ) thru 22us (a lin func?!)
-# finding all 14 derivs used to add  64us :( due to poor use of horner :(
-# now derivs adds 
+# [finding all 14 derivs used to add  64us :( due to poor use of horner :(]
+# now derivs adds ~1us.

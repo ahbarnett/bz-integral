@@ -30,7 +30,7 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
         c = fac \ vals       # solve via passed-in LU factorization of V (1.5us)
     end
     roots = PolynomialRoots.roots(c)       # find all roots (typ 7-10us)
-    #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4-5us)
+    #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4us)
     #roots = AMRVW.roots(c)                # 10x slower (~100us)
     #roots = roots_companion(reverse(c))   # also 10x slower (~100us)
     #return roots, empty(roots)   # exit for speed test of c-solve + roots only
@@ -41,8 +41,9 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     inds = sortperm(rhos)[1:nkeep]    # indices to keep
     roots = roots[inds]
     derivs = zero(roots)              # initialize deriv vals
-    for (i,r) in enumerate(roots)     # (1.3us for 14 roots degree 14)
-        derc = c[2:end] .* (1:n-1)          # coeffs of deriv of poly
+    derc = zero(c[1:end-1])           # alloc
+    for (i,r) in enumerate(roots)     # (1us for 14 roots degree 14)
+        derc .= c[2:end] .* (1:n-1)         # coeffs of deriv of poly, no alloc?
         derivs[i] = Base.evalpoly(r,derc)   # eval at root (14 ns)
     end
     return roots, derivs
