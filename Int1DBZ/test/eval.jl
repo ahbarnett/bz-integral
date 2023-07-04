@@ -1,24 +1,24 @@
+# test the Fourier series evaluators
 using Int1DBZ
 using Printf
 using OffsetArrays
+using StaticArrays
+using LinearAlgebra
 
-# just sandbox for now, not using Test
-#@testset "evaluators" begin
-#    @test 
-#end
-# ... would need a way to make @test verbose to see results ! :(
-
-M=200         # max mag Fourier freq index (200 to make fevals slow)
-hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # F-coeffs of h(x)
-hm = (hm + conj(reverse(hm)))/2                     # make h(x) real for x Re
+n=5           # 1 for scalar, else matrix size of H
+M=100         # max mag Fourier freq index (200 to make fevals slow)
+mlist = -M:M  # OV of SAs version
+Hm = OffsetVector([SMatrix{n,n}(randn(ComplexF64,(n,n))) for m in mlist], mlist)
+Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist)   # ugh! has to be better!
+Hm = (Hm + reverse(Hmconj))/2                           # H(x) hermitian if x Re
 
 nx = 1000
 xtest = (1.9, [1.3], 2π*rand(nx)) # 2π*rand(ComplexF64, nx))
 # note complex x case fails... fourier_kernel is real-only?
 for (t,x) in enumerate(xtest)
-    @printf "Scalar evalh variants consistency: test #%d...\n" t
+    @printf "n=%d (matrix size), evalh variants consistency: test #%d...\n" n t
     if t==1
-        @printf "\tevalh @ x=%g: " x; println(evalh_ref(hm,x))
+        @printf "\tevalh @ x=%g: " x; println(evalh_ref(Hm,x))
     end
-    @printf "fourier_kernel chk:          %.3g\n" norm(fourier_kernel(hm,x) - evalh_ref(hm,x),Inf)
+    @printf "fourier_kernel chk:          %.3g\n" norm(fourier_kernel(Hm,x) - evalh_ref(Hm,x),Inf)
 end

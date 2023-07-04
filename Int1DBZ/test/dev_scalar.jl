@@ -1,55 +1,40 @@
 # main development and testing area for Int1DBZ ideas.
-# Barnett June-July 2023. 7/4/23 matrix case.
+# Barnett June-July 2023
 using Int1DBZ
 using Printf
 using OffsetArrays
-using StaticArrays
 using LinearAlgebra
 using Random.Random
 using TimerOutputs
 using Gnuplot
 
-n=1             # matrix size for H (1:scalar)
-M=10            # max mag Fourier freq index (eg 200 to make fevals slow)
+M=100            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5; tol=1e-7;  # 1e-8 too much for M=200 realadap to handle :(
 verb = 0
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
-if n==1           # scalar case without SMatrix-valued coeffs
-    hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)  # F-coeffs of h(x)
-    hm = (hm + conj(reverse(hm)))/2                 # make h(x) real for x Re
-else
-    mlist = -M:M    # OV of SAs version
-    Hm = OffsetVector([SMatrix{n,n}(randn(ComplexF64,(n,n))) for m in mlist], mlist)
-    Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist) # ugh! has to be better!
-    Hm = (Hm + reverse(Hmconj))/2                     # H(x) hermitian if x Re
-end
-
-# test global root-finding on integrand
-xr = BZ_denominator_roots(Hm,ω,η);
-xr[1]
-fourier_kernel(Hm,x)
+hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)      # F-coeffs of h(x)
+hm = (hm + conj(reverse(hm)))/2                     # make h(x) real for x Re
 
 # benchmark various 1D BZ quadr methods...
 TIME = TimerOutput()
-@printf "test realadap for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
-Aa = realadap(Hm,ω,η,tol=tol, verb=1)
-@printf "\tAa = "; println(Aa)
-TIME(realadap)(Hm,ω,η,tol=tol)
-@printf "test realadap_lxvm for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
-Al = realadap_lxvm(Hm,ω,η,tol=tol, verb=1)
+@printf "\nConventional quadrature via QuadGK:\n"
+#@printf "test realadap for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
+#Aa = realadap(hm,ω,η,tol=tol, verb=1)
+#@printf "\tAa = "; println(Aa)
+#TIME(realadap)(hm,ω,η,tol=tol)
+@printf "test realadap_lxvm for M=%d ω=%g η=%g tol=%g...\n" M ω η tol
+Al = realadap_lxvm(hm,ω,η,tol=tol, verb=1)
 @printf "\tAl = "; println(Al)
-TIME(realadap_lxvm)(Hm,ω,η,tol=tol)
-Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol)
-@printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
-@printf "\tabs(Am-Al)=%.3g\n" abs(Am-Al)
-TIME(realmyadap)(Hm,ω,η,tol=tol)    # (timing valid since func not passed in :)
-stop
-
+TIME(realadap_lxvm)(hm,ω,η,tol=tol)
+Am, E, segs, numevals = realmyadap(hm,ω,η,tol=tol)
 if (verb>0)
     plot(segs,:realmyadap)  # show adaptivity and roots of denom...
+    xr = shifted_fourier_series_roots(hm,ω,η);
     @gp :realmyadap :- real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'roots'"
 end
-
+@printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
+@printf "\tabs(Am-Al)=%.3g\n" abs(Ap-Al)
+TIME(realmyadap)(hm,ω,η,tol=tol)    # timing valid since func not passed in :)
 rho0=1.0    # for readquadinv; gets slower either side
 Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=rho0)
 @printf "test realquadinv (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E

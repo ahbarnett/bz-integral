@@ -49,22 +49,34 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     return roots, derivs
 end
 
-function shifted_fourier_series_roots(hm,ω,η)
+function BZ_denominator_roots(hm::AbstractArray{T},ω,η) where T
     """
-    x = shifted_fourier_series_roots(hm,ω,η)
+    x = BZ_denominator_roots(hm,ω,η)
     
-    returns all (generally-complex) roots of a scalar-valued denominator
-    ω+iη-h(x) where h(x) has 2π periodicity with Fourier series coefficients
-    OffsetVector `hm` with 2M+1 entries. There will be 2M roots returned.
-    Their real parts will be in [0,2π). Boyd's method is used: find roots of
-    degree-2M polynomial in z=e^{ix}.
+    returns all (generally-complex) roots of scalar- or matrix-valued
+    denominator function F(x) := (ω+iη)I-H(x), where H(x) is 2π-periodic with
+    Fourier series coefficients an OffsetVector `hm` with indices
+    -M:M.  Each coefficient is a scalar or StaticArray n*n matrix.
+    There will be 2Mn roots returned. Their real parts will be in [0,2π).
+
+    For n=1, Boyd's method is used: find roots of degree-2M polynomial in
+    z=e^{ix}.
+    For n>1, a polynomial EVP is solved for z values where F(z) singular.
+    Reliability not speed is the goal here.
     """
-    hmplusc = -hm;                     # was copy(hm) else hmconst changes hm!
-    hmplusc[0] += complex(ω,η)         # F series for denominator
-    hmplusc_vec = hmplusc.parent       # shift powers by M: data vec inds 1:2M+1
-    z = AMRVW.roots(hmplusc_vec) # more reliable for M>30 than Poly..Roots.roots
+    # Barnett 7/4/23
+    hmplusc = -hm;                   # was copy(hm) else hmconst changes hm!
+    hmplusc[0] += I*complex(ω,η)     # F series for denominator
+    hmplusc_vec = hmplusc.parent     # shift powers by M: data vec inds 1:2M+1
+    n = size(hm[0],1)                # dim (matrix size)
+    if T<:Number
+        z = AMRVW.roots(hmplusc_vec) # more reliable for M>30 than PRoots.roots
+    else
+        pep = PEP(Matrix.(hmplusc_vec))  # set up PEP; SMatrix -> plain Matrix
+        z,V = polyeig(pep)               # slow? V is n*J stack of right evecs
+    end
     x = @. log(z)/im                 # solve z = e^{ix} for roots x of denom
-    x = @. mod(real(x),2π) + im*imag(x)    # fold Re to [0,2π), for humans
+    x = @. mod(real(x),2π) + im*imag(x)  # fold Re to [0,2π), for humans
     return x
 end
 

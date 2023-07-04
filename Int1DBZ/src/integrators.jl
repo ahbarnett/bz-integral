@@ -4,10 +4,13 @@
     A = realadap(hm,ω,η;tol,verb)
 
     use quadgk on Re axis to integrate 1/(ω - h(x) + iη).
-    hm is given by offsetvector of Fourier series. tol controls rtol.
+    `hm` is given by offsetvector of Fourier series, either scalar- or
+    matrix-valued. `tol` controls `rtol`.
 """
 function realadap(hm,ω,η; tol=1e-8, verb=0, kernel=evalh_ref)
-    f(x::Number) = tr(inv(complex(ω,η)*I - kernel(hm,x)))    # integrand func (quadgk gives x a number; note I is Id if StaticArray matrix)
+    # integrand (quadgk gives x a number; note I is Id if StaticArray matrix)
+    f(x::Number) = tr(inv(complex(ω,η)*I - kernel(hm,x)))
+    # note how `kernel` lets the evaluator be general
     if verb>0
         A,err,fevals = quadgk_count(f,0,2π,rtol=tol)
         @printf "\trealadap: fevals=%d,  claimed err=%g\n" fevals err
@@ -20,23 +23,28 @@ end
 """
     A = realadap_lxvm(hm,ω,η;tol,verb)
 
-    use quadgk on Re axis to integrate 1/(ω - h(x) + iη), via
-    faster non-allocating 1D Fourier series evaluator.
-    hm is given by offsetvector of Fourier series. tol controls rtol.
-    By LXVM.
+    use quadgk on Re axis to integrate 1/(ω - h(x) + iη), via faster
+    non-allocating 1D Fourier series evaluator.  `hm` is given by
+    offsetvector of Fourier series, either scalar- or
+    matrix-values. `tol` controls `rtol`.  By LXVM.
 """
-realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) = realadap(hm, ω, η; tol=tol, verb=verb, kernel=fourier_kernel)
+realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) =
+    realadap(hm, ω, η; tol=tol, verb=verb, kernel=fourier_kernel)
 
 
 """
-    A = realmyadap(hm,ω,η;tol)
+    A = realmyadap(hm,ω,η;tol,ab)
 
     use miniquadgk on Re axis to integrate 1/(ω - h(x) + iη).
-    hm is given by offsetvector of Fourier series. tol controls rtol.
-    Scalar `h(x)` only
+    hm is given by offsetvector of Fourier series, either scalar- or
+    matrix-values.
+    `tol` controls `rtol`.
+    `ab` allows custom domain, default [0,2π].
+    Uses AHB's miniquadgk, hinted by `my` in function name.
 """
 function realmyadap(hm,ω,η; tol=1e-8, ab=[0.0,2π])
-    f(x::Number) = inv(complex(ω,η) - fourier_kernel(hm,x))
+    # as in realadap, tr is Trace, has no effect in scalar, inv is reciprocal
+    f(x::Number) = tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
     return miniquadgk(f,ab[1],ab[2],rtol=tol)
 end
 
