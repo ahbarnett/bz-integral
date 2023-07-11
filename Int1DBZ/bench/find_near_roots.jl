@@ -2,6 +2,7 @@
 using Int1DBZ
 using Profile
 using LinearAlgebra
+BLAS.set_num_threads(1)
 
 r = gkrule()
 fac = lu(r.x.^(0:14)')
@@ -19,7 +20,7 @@ roots,derivs = find_near_roots(y, r.x, fac=fac); println(length(roots)) # warmup
 #@btime find_near_roots($y, $r.x);
 @btime find_near_roots($y, $r.x, fac=$fac);
 
-# with fac: 1.6us for solve c.
+# with fac: 1.6us for solve c.  No worse for 1thread than 8threads.
 # roots: varies from 0us (no roots) thru 10us (typ) thru 22us (a lin func?!)
 # [finding all 14 derivs used to add  64us :( due to poor use of horner :(]
 # now derivs adds ~1us.

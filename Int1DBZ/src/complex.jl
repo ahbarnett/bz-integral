@@ -41,9 +41,12 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     inds = sortperm(rhos)[1:nkeep]    # indices to keep
     roots = roots[inds]
     derivs = zero(roots)              # initialize deriv vals
-    derc = zero(c[1:end-1])           # alloc
+    derc = Vector{typeof(c[1])}(undef,n-1)    # alloc
     for (i,r) in enumerate(roots)     # (1us for 14 roots degree 14)
-        derc .= c[2:end] .* (1:n-1)         # coeffs of deriv of poly, no alloc?
+        for k=1:n-1
+            derc[k] = k*c[k+1]        # coeffs of deriv of poly, no alloc
+        end
+        #derc .= c[2:end] .* (1:n-1)   # matlab-style gave many alloc (400kB for 250 segs)
         derivs[i] = Base.evalpoly(r,derc)   # eval at root (14 ns)
     end
     return roots, derivs
@@ -53,15 +56,17 @@ function BZ_denominator_roots(hm::AbstractArray{T},ω,η) where T
     """
     x = BZ_denominator_roots(hm,ω,η)
     
-    returns all (generally-complex) roots of scalar- or matrix-valued
+    returns all (generally-complex) roots (NEVs) of scalar- or matrix-valued
     denominator function F(x) := (ω+iη)I-H(x), where H(x) is 2π-periodic with
     Fourier series coefficients an OffsetVector `hm` with indices
     -M:M.  Each coefficient is a scalar or StaticArray n*n matrix.
-    There will be 2Mn roots returned. Their real parts will be in [0,2π).
+    There will be 2Mn roots (NEVs) returned. Their real parts will be in
+    [0,2π).
 
     For n=1, Boyd's method is used: find roots of degree-2M polynomial in
     z=e^{ix}.
-    For n>1, a polynomial EVP is solved for z values where F(z) singular.
+    For n>1, a polynomial eigenvalue problem (PEP) is solved to get z's
+    where F(z) singular.
     Reliability not speed is the goal here.
     """
     # Barnett 7/4/23
@@ -73,7 +78,7 @@ function BZ_denominator_roots(hm::AbstractArray{T},ω,η) where T
         z = AMRVW.roots(hmplusc_vec) # more reliable for M>30 than PRoots.roots
     else
         pep = PEP(Matrix.(hmplusc_vec))  # set up PEP; SMatrix -> plain Matrix
-        z,V = polyeig(pep)               # slow? V is n*J stack of right evecs
+        z,_ = polyeig(pep)               # slow?
     end
     x = @. log(z)/im                 # solve z = e^{ix} for roots x of denom
     x = @. mod(real(x),2π) + im*imag(x)  # fold Re to [0,2π), for humans
@@ -109,4 +114,4 @@ function roots_companion(a::AbstractVector{<:Number})
     # at this point we want case of real C to be possible, faster than complex
     complex(eigvals!(C))    # overwrite C, and we don't want the vectors
 end
-# Note re don't need evecs: see also LinearAlgebra.LAPACK.geev!
+# Note re fact that we don't need evecs: see also LinearAlgebra.LAPACK.geev!

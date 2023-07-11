@@ -145,6 +145,7 @@ end
 
 
 # --------- plotting segments ---------------------------------------------
+# (this includes segment color-coding for non-miniquadgk methods)
 
 function plot(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
     # start a new plot in session :figname

@@ -1,61 +1,57 @@
 # main development and testing area for Int1DBZ ideas.
-# Barnett June-July 2023. 7/4/23 matrix case.
+# Barnett June-July 2023. 7/4/23 matrix case, also works for n=1 scalar.
 using Int1DBZ
 using Printf
 using OffsetArrays
 using StaticArrays
 using LinearAlgebra
+BLAS.set_num_threads(1)
 using Random.Random
 using TimerOutputs
 using Gnuplot
 
-n=1             # matrix size for H (1:scalar)
-M=10            # max mag Fourier freq index (eg 200 to make fevals slow)
-η=1e-5; ω=0.5; tol=1e-7;  # 1e-8 too much for M=200 realadap to handle :(
+n=10             # matrix size for H (1:scalar)
+M=20            # max mag Fourier freq index (eg 200 to make fevals slow)
+η=1e-5; ω=0.5; tol=1e-7;
 verb = 0
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
 if n==1           # scalar case without SMatrix-valued coeffs
-    hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)  # F-coeffs of h(x)
-    hm = (hm + conj(reverse(hm)))/2                 # make h(x) real for x Re
+    Hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)  # F-coeffs of h(x)
+    Hm = (Hm + conj(reverse(Hm)))/2                 # make h(x) real for x Re
 else
-    mlist = -M:M    # OV of SAs version
+    mlist = -M:M  # matrix, OV of SA's version, some painful iterators here...
     Hm = OffsetVector([SMatrix{n,n}(randn(ComplexF64,(n,n))) for m in mlist], mlist)
-    Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist) # ugh! has to be better!
+    Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist)
     Hm = (Hm + reverse(Hmconj))/2                     # H(x) hermitian if x Re
 end
+@printf "Test n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
+xr = BZ_denominator_roots(Hm,ω,η);     # count roots (NEVs)
+@printf "global %d roots (or NEVs) of which %d η-near Re axis.\n" length(xr) sum(abs.(imag.(xr)).<10η)
 
-# test global root-finding on integrand
-xr = BZ_denominator_roots(Hm,ω,η);
-xr[1]
-fourier_kernel(Hm,x)
+# for use w/ julia -t1 --track-allocation=user --project=.
+#Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=0.8)
+#Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol);
+#stop
 
 # benchmark various 1D BZ quadr methods...
 TIME = TimerOutput()
-@printf "test realadap for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
-Aa = realadap(Hm,ω,η,tol=tol, verb=1)
-@printf "\tAa = "; println(Aa)
-TIME(realadap)(Hm,ω,η,tol=tol)
-@printf "test realadap_lxvm for n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol
-Al = realadap_lxvm(Hm,ω,η,tol=tol, verb=1)
-@printf "\tAl = "; println(Al)
+#Aa = realadap(Hm,ω,η,tol=tol, verb=1)
+#@printf "\trealadap integral Aa = "; println(Aa)
+#TIME(realadap)(Hm,ω,η,tol=tol)
+Al = realadap_lxvm(Hm,ω,η,tol=tol)
 TIME(realadap_lxvm)(Hm,ω,η,tol=tol)
-Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol)
-@printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
+@printf "\trealadap_lxvm ans Al = "; println(Al)
+Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol, verb=1)
 @printf "\tabs(Am-Al)=%.3g\n" abs(Am-Al)
 TIME(realmyadap)(Hm,ω,η,tol=tol)    # (timing valid since func not passed in :)
-stop
-
-if (verb>0)
-    plot(segs,:realmyadap)  # show adaptivity and roots of denom...
+if (verb>0)          # show adaptivity around roots of denom
+    plot(segs,:realmyadap)
     @gp :realmyadap :- real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'roots'"
 end
-
-rho0=1.0    # for readquadinv; gets slower either side
-Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=rho0)
-@printf "test realquadinv (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
-#@printf "\tAp = "; println(Ap)
+rho0=1.0 #0.8    # for readquadinv; gets slower either side
+Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0, verb=1)
 @printf "\tabs(Ap-Al)=%.3g\n" abs(Ap-Al)
-TIME(realquadinv)(hm,ω,η,tol=tol,rho=rho0)
+TIME(realquadinv)(Hm,ω,η,tol=tol,rho=rho0)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 if (verb>0)
     plot(segs,:realquadinv)
@@ -63,21 +59,9 @@ if (verb>0)
 end
 #Gnuplot.quitall()
 
-# examine segs eval'ed vs chosen: use to tweak rho
-#Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=1.0); abs(Ap-Al), Int(numevals/15), length(segs)
-
 #=
-using BenchmarkTools
-BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
-ab=[3.0,3.4];   # key region where rho=0.5 caused splitting
-Aa,E,segs,numevals = realmyadap(hm,ω,η; tol=tol, ab=ab);
-Ar,E,segsr,numevals = realquadinv(hm,ω,η; tol=tol, ab=ab);
-@printf "realmyadap %d segs vs realquadinv %d segs\n" length(segs) length(segsr)
-@printf "smaller-ab check abs(Ar-Aa)=%.3g\n" abs(Ar-Aa)
-@btime realmyadap(hm,ω,η; tol=tol, ab=ab);
-@btime realquadinv(hm,ω,η; tol=tol, ab=ab);
-# tol=1e-10 we destroy realmyadap(miniquadgk)... but that's too accurate
+using Profile
+@profile (for i=1:200;
+          Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0); end)
+Profile.print()
 =#
-
-
-

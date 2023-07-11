@@ -6,7 +6,7 @@ using StaticArrays
 using LinearAlgebra
 using Random.Random
 
-n=1             # matrix size for H (1:scalar)
+for n=1:2             # matrix size for H (1=scalar).. Check scalar & matrix
 M=10            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
@@ -30,4 +30,6 @@ for x in xr
         U,S,V = svd(complex(ω,η)*I - fourier_kernel(Hm,x))
         @printf "min sing val @ x=%g+%gi should vanish %.3g\n" real(x) imag(x) minimum(S)
     end
+end
+    
 end

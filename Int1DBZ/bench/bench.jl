@@ -1,4 +1,4 @@
-# a speed test, run with
+# a speed test for scalar case of new quadrature meths. run with
 # julia -t1 --track-allocation=user --project=.
 
 using Int1DBZ

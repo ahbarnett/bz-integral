@@ -48,10 +48,11 @@ if (verb>0)
 end
 #Gnuplot.quitall()
 
-# examine segs eval'ed vs chosen: use to tweak rho
+
+# examine segs eval'ed (fevals/15) vs chosen segs, use to tweak rho...
 #Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=1.0); abs(Ap-Al), Int(numevals/15), length(segs)
 
-#=
+#=   debugging rho-filter problem...
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
 ab=[3.0,3.4];   # key region where rho=0.5 caused splitting
