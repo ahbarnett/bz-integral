@@ -146,22 +146,18 @@ end
 
 # --------- plotting segments ---------------------------------------------
 # (this includes segment color-coding for non-miniquadgk methods)
-
-function plot(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
-    # start a new plot in session :figname
-    a = [s.a for s in segs]
-    b = [s.b for s in segs]
-    @gp session real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
-    xmax = maximum([a;b])
-    xmin = minimum([a;b])
-    y0 = 0.3*(xmax-xmin)     # y range to view
-    @gp session :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
-end
 function plot!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
-    # add to current plot in session :figname
+    # add to current plot in given session, or start that session & plot
     a = [s.a for s in segs]
     b = [s.b for s in segs]
-    @gp session :- real([a b]) imag([a b]) "w lp pt 1 lc rgb '#000000' notit"
+    i = [s.meth==1 for s in segs]     # inds of std GK segs
+    ab = [a[i] b[i]]
+    @gp session :- real(ab) imag(ab) "w lp pt 1 lc rgb '#000000' tit 'GK segs'"
+    i = [s.meth==2 for s in segs]     # pole-sub segs
+    if sum(i)>0
+        ab = [a[i] b[i]]
+        @gp session :- real(ab) imag(ab) "w lp pt 1 lc rgb '#00ff00' tit 'pole-sub'"
+    end
     xmax = maximum([a;b])
     xmin = minimum([a;b])
     y0 = 0.3*(xmax-xmin)     # y range to view

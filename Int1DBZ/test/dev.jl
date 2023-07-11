@@ -13,7 +13,7 @@ using Gnuplot
 n=10             # matrix size for H (1:scalar)
 M=20            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5; tol=1e-7;
-verb = 0
+verb = 1
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
 if n==1           # scalar case without SMatrix-valued coeffs
     Hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)  # F-coeffs of h(x)
@@ -44,9 +44,9 @@ TIME(realadap_lxvm)(Hm,ω,η,tol=tol)
 Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol, verb=1)
 @printf "\tabs(Am-Al)=%.3g\n" abs(Am-Al)
 TIME(realmyadap)(Hm,ω,η,tol=tol)    # (timing valid since func not passed in :)
-if (verb>0)          # show adaptivity around roots of denom
-    plot(segs,:realmyadap)
-    @gp :realmyadap :- real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'roots'"
+if (verb>0)          # show adaptivity around poles (roots of denom)
+    @gp :realmyadap real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
+    plot!(segs,:realmyadap)
 end
 rho0=1.0 #0.8    # for readquadinv; gets slower either side
 Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0, verb=1)
@@ -54,8 +54,8 @@ Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0, verb=1)
 TIME(realquadinv)(Hm,ω,η,tol=tol,rho=rho0)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 if (verb>0)
-    plot(segs,:realquadinv)
-    @gp :realquadinv :- real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'roots'"
+    @gp :realquadinv real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
+    plot!(segs,:realquadinv)
 end
 #Gnuplot.quitall()
 

@@ -127,7 +127,12 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
         heappush!(segs, s1, Reverse)
         heappush!(segs, s2, Reverse)
     end
-    verb>0 && @printf "\tadaptquadinv:\tfevals=%d, nsegs=%d, claimed err=%.3g\n" numevals length(segs) E
+    if verb>0
+        @printf "\tadaptquadinv:\tfevals=%d, nsegs=%d, claimed err=%.3g\n" numevals length(segs) E
+        nmethsegs = [0,0];   # count segs of each method
+        for m=1:2, nmethsegs[m] = sum([s.meth==m for s in segs]); end
+        @printf "\t\t\t%d GK segs (meth=1), %d pole-sub segs (meth=2)\n" nmethsegs[1] nmethsegs[2]
+    end
     return I, E, segs, numevals
 end
 
