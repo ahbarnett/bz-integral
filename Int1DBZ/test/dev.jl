@@ -10,12 +10,12 @@ using Random.Random
 using TimerOutputs
 using Gnuplot
 
-n=10             # matrix size for H (1:scalar)
-M=20            # max mag Fourier freq index (eg 200 to make fevals slow)
+n=1             # matrix size for H (1:scalar)
+M=50            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5; tol=1e-7;
 verb = 1
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
-if n==1           # scalar case without SMatrix-valued coeffs
+if false && n==1        # [obsolete] scalar case without SMatrix-valued coeffs
     Hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)  # F-coeffs of h(x)
     Hm = (Hm + conj(reverse(Hm)))/2                 # make h(x) real for x Re
 else
@@ -39,7 +39,7 @@ TIME = TimerOutput()
 #@printf "\trealadap integral Aa = "; println(Aa)
 #TIME(realadap)(Hm,ω,η,tol=tol)
 Al = realadap_lxvm(Hm,ω,η,tol=tol)
-TIME(realadap_lxvm)(Hm,ω,η,tol=tol)
+TIME(realadap_lxvm)(Hm,ω,η,tol=tol)    # TimerOutputs no $Hm interpolation :(
 @printf "\trealadap_lxvm ans Al = "; println(Al)
 Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol, verb=1)
 @printf "\tabs(Am-Al)=%.3g\n" abs(Am-Al)
