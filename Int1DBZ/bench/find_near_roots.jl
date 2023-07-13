@@ -16,8 +16,10 @@ y[2:4:end] .*= -1       # slower osc, half the roots
 
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
-roots,derivs = find_near_roots(y, r.x, fac=fac); println(length(roots)) # warmup
-#@btime find_near_roots($y, $r.x);
+
+roots,derivs = find_near_roots(y, r.x, fac=fac);    # warmup
+println("found # roots: ", length(roots))
+@btime find_near_roots($y, $r.x);
 @btime find_near_roots($y, $r.x, fac=$fac);
 
 # with fac: 1.6us for solve c.  No worse for 1thread than 8threads.

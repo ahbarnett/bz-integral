@@ -110,7 +110,7 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     segs = [segs]                  # heap needs to be Vector
     while E>atol && E>rtol*abs(I) && numevals<maxevals
         s = heappop!(segs, Reverse)            # get worst seg
-        verb>1 && @printf "adaptquadinv tot E=%.3g, splitting (%g,%g) of meth=%d:\n" E s.a s.b s.meth
+        verb>1 && @printf "adaptquadinv tot E=%.3g, splitting (%g,%g) of npoles=%d:\n" E s.a s.b s.npoles
         split = (s.b+s.a)/2
         mid, sca = (split+s.a)/2, (split-s.a)/2
         gvals .= map(x -> g(mid + sca*x), r.x)   # .= in-place
@@ -129,9 +129,10 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     end
     if verb>0
         @printf "\tadaptquadinv:\tfevals=%d, nsegs=%d, claimed err=%.3g\n" numevals length(segs) E
-        nmethsegs = [0,0];   # count segs of each type
-        for m=1:2, nmethsegs[m] = sum([s.meth==m for s in segs]); end
-        @printf "\t\t\t%d GK segs (meth=1), %d pole-sub segs (meth=2)\n" nmethsegs[1] nmethsegs[2]
+        npolesegs = zeros(Int,4)   # count segs of each type (plain, 1-pole...)
+        for m=1:3, npolesegs[m] = sum([s.npoles==m-1 for s in segs]); end
+        npolesegs[4] = sum([s.npoles>2 for s in segs])
+        @printf "\t\t\t%d plain GK segs, %d 1-pole, %d 2-pole, %d >2-pole\n" npolesegs[1] npolesegs[2] npolesegs[3] npolesegs[4]
     end
     return I, E, segs, numevals
 end
@@ -162,14 +163,14 @@ function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
         #println("Ipoles = ",Ipoles)
     end
     sp = applygkrule(ginvals,a,b,r)   # GK on corr 1/g vals, another Segment ***
-    verb>0 && println("\t", sp.E, "(meth=2) <? ", s.E, "(plain GK)")
+    verb>0 && println("\t", sp.E, "(pole-sub) <? ", s.E, "(plain GK)")
     if sp.E > s.E
         return s                # error not improved, revert to plain GK
     else
         sca = (b-a)/2
-        # sp.meth = 2           # pole sub worked, record it... no, immutable!
+        # sp.meth = length(zr)  # pole sub worked, record it... no, immutable!
         # sp.I += sca*Ipoles    # add (scaled) effect of poles
         # return sp             # that idea failed :(
-        return Segment(a,b, sp.I+sca*Ipoles, sp.E, 2)  # immutable => new seg :(
+        return Segment(a,b, sp.I+sca*Ipoles, sp.E, length(zr))  # immutable => new seg :(
     end
 end

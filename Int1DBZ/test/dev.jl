@@ -10,9 +10,9 @@ using Random.Random
 using TimerOutputs
 using Gnuplot
 
-n=1             # matrix size for H (1:scalar)
-M=50            # max mag Fourier freq index (eg 200 to make fevals slow)
-η=1e-5; ω=0.5; tol=1e-7;
+n=10             # matrix size for H (1:scalar)
+M=10            # max mag Fourier freq index (eg 200 to make fevals slow)
+η=1e-5; ω=0.5; tol=1e-6; mtail = 1e-2;
 verb = 1
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
 if false && n==1        # [obsolete] scalar case without SMatrix-valued coeffs
@@ -20,8 +20,10 @@ if false && n==1        # [obsolete] scalar case without SMatrix-valued coeffs
     Hm = (Hm + conj(reverse(Hm)))/2                 # make h(x) real for x Re
 else
     mlist = -M:M  # matrix, OV of SA's version, some painful iterators here...
-    Hm = OffsetVector([SMatrix{n,n}(randn(ComplexF64,(n,n))) for m in mlist], mlist)
-    Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist)
+    decayrate = log(1/mtail)/M
+    am = OffsetVector(exp.(-decayrate*abs.(mlist)), mlist)  # rand w/ decay
+    Hm = OffsetVector([SMatrix{n,n}(am[m] * randn(ComplexF64,(n,n))) for m in mlist], mlist)
+     Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist)
     Hm = (Hm + reverse(Hmconj))/2                     # H(x) hermitian if x Re
 end
 @printf "Test n=%d M=%d ω=%g η=%g tol=%g...\n" n M ω η tol

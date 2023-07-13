@@ -1,16 +1,17 @@
 # Bare bones scalar Gauss-Kronrod quadrature, with segment diagnosis,
 # so don't have to constantly hack or grok QuadGK.
 
-# integration segment (a,b), estimated integral I, and estimated error E,
-# and a record of method used.
+# integration segment (a,b), estimated integral I, and estimated error E.
 # Segment is templated by 3 types, that of (a,b), that of I, and that of E,
 # which it seems to read from the types of the constructor (a,b,I,E):
 struct Segment{TX,TI,TE}
+    # fields as in QuadGK...
     a::TX
     b::TX
     I::TI
     E::TE
-    meth::Int64
+    # fields to do with experimental methods...
+    npoles::Int64       # number of poles subtracted from integrand
 end
 # make segments sort by error in a heap...
 Base.isless(i::Segment, j::Segment) = isless(i.E, j.E)
@@ -80,7 +81,7 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     Use `fvals` as function values at the nodes `r.x` to apply plain
     Gauss-Kronrod quadrature on interval (a,b). Returns `Segment` object
     containing `a` and `b` endpoints, `I` integral estimate, `E` error
-    estimate, and `meth` method used (here 1 for GK).
+    estimate, and `npoles` number of poles subtracted (0 for plain GK).
 """
     # Barnett 6/30/23 tidying up applyrule!
     n = length(r.gw)
@@ -95,8 +96,7 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     Ik *= sca
     Ig *= sca
     E = abs(Ig-Ik)
-    meth = 1
-    return Segment(a,b,Ik,E,meth)
+    return Segment(a,b,Ik,E,0)   # 0 is npoles, means plain GK
 end
 
 function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
@@ -150,10 +150,10 @@ function plot!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,T
     # add to current plot in given session, or start that session & plot
     a = [s.a for s in segs]
     b = [s.b for s in segs]
-    i = [s.meth==1 for s in segs]     # inds of std GK segs
+    i = [s.npoles==0 for s in segs]     # inds of std GK segs
     ab = [a[i] b[i]]
     @gp session :- real(ab) imag(ab) "w lp pt 1 lc rgb '#000000' tit 'GK segs'"
-    i = [s.meth==2 for s in segs]     # pole-sub segs
+    i = [s.npoles>0 for s in segs]     # pole-sub segs
     if sum(i)>0
         ab = [a[i] b[i]]
         @gp session :- real(ab) imag(ab) "w lp pt 1 lc rgb '#00ff00' tit 'pole-sub'"

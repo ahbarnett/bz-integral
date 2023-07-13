@@ -8,18 +8,21 @@ using Random.Random
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
 
-η=1e-5; ω=0.5; tol=1e-7;
+η=1e-5; ω=0.5; tol=1e-6;
+mtail = 1e-3;              # how small exp decay of coeffs gets to by m=M
 
 @printf "--------------------------------------------------------------------\n"
 @printf "M\tn\tplain GK  \tpole-sub   \tratios (improvement factors)\n"
 @printf "\t\t#evals\tt(ms)\t#evals\tt(ms)\t#evals\ttime\n"
 @printf "--------------------------------------------------------------------\n"
 
-for M = [8 64]
+for M = [10 100]
     for n = [1 2 4 8]
         Random.seed!(0)
         mlist = -M:M  # matrix, OV of SA's version, some painful iterators here
-        Hm = OffsetVector([SMatrix{n,n}(randn(ComplexF64,(n,n))) for m in mlist], mlist)
+        decayrate = log(1/mtail)/M
+        am = OffsetVector(exp.(-decayrate*abs.(mlist)), mlist)  # rand w/ decay
+        Hm = OffsetVector([SMatrix{n,n}(am[m] * randn(ComplexF64,(n,n))) for m in mlist], mlist)
         Hmconj = OffsetVector([Hm[m]' for m in mlist], mlist)
         Hm = (Hm + reverse(Hmconj))/2                     # H(x) hermitian if x Re
         Al = realadap_lxvm(Hm,ω,η,tol=tol)    # ground-truth
@@ -29,7 +32,7 @@ for M = [8 64]
         Ap, Ep, segsp, nep = realquadinv(Hm,ω,η,tol=tol)
         tobj = @benchmark realquadinv($Hm,ω,η,tol=tol)
         tp = median(tobj.times)/1e6
-        @printf "%d\t%d\t%d\t%.3g\t%d\t%.3g\t%.2f\t%.2f\n" M n nem tm nep tp nem/nep tm/tp
+        @printf "%d\t%d\t%d\t%.2g\t%d\t%.2g\t%.2g\t%.2g\n" M n nem tm nep tp nem/nep tm/tp
     end
 end
 @printf "--------------------------------------------------------------------\n"
