@@ -29,9 +29,12 @@ function few_poly_roots(c::Vector{T}, vals::Vector{T}, nodes::Vector,
         itermax = 10
         k = 0
         dr = 1.0
-        #r = complex(nodes[argmin(abs.(vals))])    # init at node w/ min val?
-        # *** would need to update all vals via evalpoly, O(p^2.nr) tot cost?
-        r = complex(0.0)         # too crude init? hope r converges to a root
+        if jr==1    # r init method
+            r = complex(nodes[argmin(abs.(vals))])    # init at node w/ min val?
+        else
+            r = complex(0.0)    # too crude init?
+            # *** would need update all vals via evalpoly, O(p^2.nr) tot cost?
+        end
         while dr>drok && k<itermax
             debug>0 && println(k, ": r=", r, " dr=",dr)
             rold = r
@@ -94,7 +97,7 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth
     elseif meth=="PR5"
         roots = PolynomialRoots.roots5(c[1:6]) # find roots only degree-5 (4us)
     elseif meth=="F"
-        roots, rvals = few_poly_roots(c,vals,nodes,3)
+        roots, rvals = few_poly_roots(c,vals,nodes,4)
         # use rvals as check, or ignore since seg quadrature will just be bad?
     else println("Unknown meth in find_near_roots!")
     end

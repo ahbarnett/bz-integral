@@ -67,10 +67,10 @@ end
     `verb` greater than 0 gives debug info.
     `rho` is passed to adaptquadinv.
 """
-function realquadinv(hm,ω,η; tol=1e-8, rho=1.0, verb=0, ab=[0.0,2π])
+function realquadinv(hm,ω,η; tol=1e-8, rho=1.0, verb=0, ab=[0.0,2π], rootmeth="PR")
     # scalar reciprocal of trace of inverse is analytic
     g(x::Number) = 1.0 / tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
-    return adaptquadinv(g,ab[1],ab[2], rtol=tol, rho=rho, verb=verb)
+    return adaptquadinv(g,ab[1],ab[2], rtol=tol, rho=rho, verb=verb,rootmeth=rootmeth)
 end
 
 
@@ -151,7 +151,7 @@ function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
     # get roots, g'(roots)  ...n seems good max # roots to pole-sub @ 2n+1 pts
     zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac,meth=rootmeth)
     verb>0 && @printf "\tapplypole sub (%g,%g):\t%d roots\n" a b length(zr)
-    if length(zr)==0 || length(zr)>length(r.gw)  # or 3, captures most
+    if length(zr)==0 || length(zr)>4  #length(r.gw)  # or 3, captures most
         return s        # either nothing to do, or don't pole-sub too much!
     end
     Ipoles = zero(I)

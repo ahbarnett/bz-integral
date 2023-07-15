@@ -11,7 +11,7 @@ using TimerOutputs
 using Gnuplot
 
 n=10             # matrix size for H (1:scalar)
-M=10            # max mag Fourier freq index (eg 200 to make fevals slow)
+M=20            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5; tol=1e-6; mtail = 1e-2;
 verb = 1
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
@@ -51,9 +51,10 @@ if (verb>0)          # show adaptivity around poles (roots of denom)
     plot!(segs,:realmyadap)
 end
 rho0=1.0 #0.8    # for readquadinv; gets slower either side
-Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0, verb=1)
+rmeth="F"
+Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0,rootmeth=rmeth,verb=1)
 @printf "\tabs(Ap-Al)=%.3g\n" abs(Ap-Al)
-TIME(realquadinv)(Hm,ω,η,tol=tol,rho=rho0)
+TIME(realquadinv)(Hm,ω,η,tol=tol,rho=rho0,rootmeth=rmeth)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 if (verb>0)
     @gp :realquadinv real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
