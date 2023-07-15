@@ -17,20 +17,21 @@ function few_poly_roots(c::Vector{T}, vals::Vector{T}, nodes::Vector,
     """
     # Barnett 7/15/23
     debug>0 && println("few_poly_roots start:")
-    roots = similar(c,nr); rvals = similar(c,nr)     # output arrays
-    cl = copy(c)           # alloc local copy of coeffs
-    for jr = 1:nr               # loop over roots to find
-        p = length(c)-jr          # degree of current poly
+    roots = similar(c,nr); rvals = similar(c,nr)     # size-nr output arrays
+    cl = copy(c)                 # alloc local copy of coeffs
+    cp = similar(c,length(c)-1)           # alloc coeffs of deriv
+    for jr = 1:nr                # loop over roots to find
+        p = length(c)-jr         # degree of current poly
         debug>0 && println("degree p=",p,"...")
-        # *** is this alloc slow?
-        cp = similar(cl,p); for k=1:p; cp[k] = k*cl[k+1]; end  # coeffs of deriv
+        resize!(cp,p)            # no alloc
+        for k=1:p; cp[k] = k*cl[k+1]; end  # coeffs of deriv
         drok = 1e-8     # Newton params (expected err is drok^2; quadr conv)
         itermax = 10
         k = 0
         dr = 1.0
         #r = complex(nodes[argmin(abs.(vals))])    # init at node w/ min val?
         # *** would need to update all vals via evalpoly, O(p^2.nr) tot cost?
-        r = complex(0.0)      # too crude init? hope r converges to a root
+        r = complex(0.0)         # too crude init? hope r converges to a root
         while dr>drok && k<itermax
             debug>0 && println(k, ": r=", r, " dr=",dr)
             rold = r
@@ -42,8 +43,8 @@ function few_poly_roots(c::Vector{T}, vals::Vector{T}, nodes::Vector,
         # IDEA: if dr>tol; return roots[1:jr-1]  # failed
         for k=1:p; cp[k]=cl[k]; end       # overwrite cp as workspace
         # deflate poly from cp workspace back into cl coeffs (degree p-1)
-        cl[p] = cl[p+1]      # start deflation downwards recurrence
-        cl = cl[1:p]         # trunc len by one
+        cl[p] = cl[p+1]          # start deflation downwards recurrence
+        resize!(cl,p)            # trunc len by one, no alloc
         for k=p-1:-1:1; cl[k] = cp[k+1] + r*cl[k+1]; end
         rvals[jr] = cp[1]+r*cl[1]     # final recurrence evals the poly at r
         roots[jr] = r            # copy out answer

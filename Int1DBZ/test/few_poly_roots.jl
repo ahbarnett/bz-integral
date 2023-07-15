@@ -26,10 +26,12 @@ println("true func |g(r)|=", abs.(g.(roots)))
 
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
+@btime few_poly_roots($c, $y, $r.x, 1)
+@btime few_poly_roots($c, $y, $r.x, 2)
 @btime few_poly_roots($c, $y, $r.x, 3)
 #@btime find_near_roots($y, $r.x, fac=$fac);
 
 roots,derivs = find_near_roots(y, r.x, fac=fac, meth="F");
 println("found # roots: ", length(roots))
 show(roots)
-@btime find_near_roots($y, $r.x, fac=$fac, meth="F");
+@btime find_near_roots($y, $r.x, fac=$fac, meth="F")
