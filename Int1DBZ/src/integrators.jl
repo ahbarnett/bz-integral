@@ -74,18 +74,21 @@ function realquadinv(hm,ω,η; tol=1e-8, rho=1.0, verb=0, ab=[0.0,2π])
 end
 
 
-function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,rho=1.0,verb=0) where T<:Function
+function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,rho=1.0,verb=0,rootmeth="PR") where T<:Function
 """
     I, E, segs, numevals = adaptquadinv(g, a::Real, b::Real; ...
-                             atol=0.0,rtol=0.0,maxevals=1e7,rho=1.0,verb=0)
+                             atol=0.0,rtol=0.0,maxevals=1e7,rho=1.0,verb=0,
+                             rootmeth="PR")
 
     1D adaptive pole-subtracting Gauss-Kronrod quadrature of 1/g,
     where `g` is a given locally analytic scalar function, over interval
-    (a,b).
+    (a,b). It also handles `g` merely meromorphic.
+
     'rho' sets the max Bernstein ellipse parameter for dealing with poles.
     As in QuadGK, `atol` has precendence over 'rtol' in setting target
     accuracy, and `maxevals` limits the number of `g` evals.
-    `verb`=1 gives debug text output, 2 gives segment-level, 3 pole-sub roots
+    `verb`=1 gives debug text output, 2 gives segment-level, 3 pole-sub-level
+    `rootmeth` controls poly root-finding method (see `find_near_roots()`).
 
     Notes: Based on miniguadgk.
 """
@@ -105,7 +108,7 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     gvals = map(x -> g(mid + sca*x), r.x)   # allocs, once
     ginvals = 1.0./gvals
     # kick off adapt via mother seg...
-    segs = applypolesub!(gvals,ginvals,a,b,r,rho=rho,verb=verb-2,fac=fac)
+    segs = applypolesub!(gvals,ginvals,a,b,r,rho=rho,verb=verb-2,fac=fac,rootmeth=rootmeth)
     I, E = segs.I, segs.E          # keep global estimates which get updated
     segs = [segs]                  # heap needs to be Vector
     while E>atol && E>rtol*abs(I) && numevals<maxevals
@@ -116,11 +119,11 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
         gvals .= map(x -> g(mid + sca*x), r.x)   # .= in-place
         # for (i,x) in enumerate(r.x); gvals[i] .= g(mid + sca*r.x[i]); end  # loop so no alloc? No, was just the same... due to g() itself??
         ginvals .= 1.0./gvals                    # math cheap; in-place
-        s1 = applypolesub!(gvals,ginvals, s.a,split, r,rho=rho,fac=fac,verb=verb-2)
+        s1 = applypolesub!(gvals,ginvals, s.a,split, r,rho=rho,fac=fac,verb=verb-2,rootmeth=rootmeth)
         mid, sca = (s.b+split)/2, (s.b-split)/2
         gvals .= map(x -> g(mid + sca*x), r.x)
         ginvals .= 1.0./gvals
-        s2 = applypolesub!(gvals,ginvals, split,s.b, r,rho=rho,verb=verb-2,fac=fac)
+        s2 = applypolesub!(gvals,ginvals, split,s.b, r,rho=rho,verb=verb-2,fac=fac,rootmeth=rootmeth)
         numevals += 2*(2n+1)
         I += -s.I + s1.I + s2.I    # update global integral and err
         E += -s.E + s1.E + s2.E
@@ -129,16 +132,16 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     end
     if verb>0
         @printf "\tadaptquadinv:\tfevals=%d, nsegs=%d, claimed err=%.3g\n" numevals length(segs) E
-        npolesegs = zeros(Int,4)   # count segs of each type (plain, 1-pole...)
-        for m=1:3, npolesegs[m] = sum([s.npoles==m-1 for s in segs]); end
-        npolesegs[4] = sum([s.npoles>2 for s in segs])
-        @printf "\t\t\t%d plain GK segs, %d 1-pole, %d 2-pole, %d >2-pole\n" npolesegs[1] npolesegs[2] npolesegs[3] npolesegs[4]
+        npolesegs = zeros(Int,6)   # count segs of each type (plain, 1-pole...)
+        for m=1:5, npolesegs[m] = sum([s.npoles==m-1 for s in segs]); end
+        npolesegs[6] = sum([s.npoles>4 for s in segs])
+        @printf "\t\t\t%d plain GK segs; 1,2,..-pole segs [%d %d %d %d]; >4-pole %d\n" npolesegs[1] npolesegs[2] npolesegs[3] npolesegs[4] npolesegs[5] npolesegs[6]
     end
     return I, E, segs, numevals
 end
 
 function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
-                      b::Number, r::gkrule; rho=1.0, verb=0, fac=nothing)
+                      b::Number, r::gkrule; rho=1.0, verb=0, fac=nothing, rootmeth="PR")
 # pole-correcting version of applygkrule. Changes the input ginvals array.
 # no local g evals; just pass in all vals and reciprocal vals.
 # Barnett 6/30/23
@@ -146,9 +149,9 @@ function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
     s = applygkrule(ginvals,a,b,r)   # create Segment w/ plain GK ans for (a,b)
     # now work in local coords wrt std seg [-1,1]...
     # get roots, g'(roots)  ...n seems good max # roots to pole-sub @ 2n+1 pts
-    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac)
+    zr, dgdt = find_near_roots(gvals,r.x,rho=rho,fac=fac,meth=rootmeth)
     verb>0 && @printf "\tapplypole sub (%g,%g):\t%d roots\n" a b length(zr)
-    if length(zr)==0 || length(zr)>length(r.gw)  # or 2
+    if length(zr)==0 || length(zr)>length(r.gw)  # or 3, captures most
         return s        # either nothing to do, or don't pole-sub too much!
     end
     Ipoles = zero(I)

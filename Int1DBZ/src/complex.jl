@@ -1,6 +1,60 @@
-function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
+function few_poly_roots(c::Vector{T}, vals::Vector{T}, nodes::Vector,
+                        nr::Int=3; debug=0) where T
     """
-    roots, derivs = find_near_roots(vals, nodes; rho=1.0, fac=nothing)
+    roots,rvals = few_poly_roots(c::Vector, vals::Vector, nodes::Vector,
+                                n::Int; verb=0)
+
+    Return `nr` polynomial roots `roots` given by coefficients `c`,
+    and `rvals` corresponding polynomial values.
+
+    Speed goal is 1 us for nr about 3 and degree-14. May use
+    `vals` function values at `nodes` which should fill out [-1,1].
+    Alternates Newton for next root, then deflation to factor it out.
+
+    `debug>0` reports copious text output
+    
+    No failure reporting yet. User should use `rvals` as quality check.
+    """
+    # Barnett 7/15/23
+    debug>0 && println("few_poly_roots start:")
+    roots = similar(c,nr); rvals = similar(c,nr)     # output arrays
+    cl = copy(c)           # alloc local copy of coeffs
+    for jr = 1:nr               # loop over roots to find
+        p = length(c)-jr          # degree of current poly
+        debug>0 && println("degree p=",p,"...")
+        # *** is this alloc slow?
+        cp = similar(cl,p); for k=1:p; cp[k] = k*cl[k+1]; end  # coeffs of deriv
+        drok = 1e-8     # Newton params (expected err is drok^2; quadr conv)
+        itermax = 10
+        k = 0
+        dr = 1.0
+        #r = complex(nodes[argmin(abs.(vals))])    # init at node w/ min val?
+        # *** would need to update all vals via evalpoly, O(p^2.nr) tot cost?
+        r = complex(0.0)      # too crude init? hope r converges to a root
+        while dr>drok && k<itermax
+            debug>0 && println(k, ": r=", r, " dr=",dr)
+            rold = r
+            r -= evalpoly(r,cl) / evalpoly(r,cp)   # lengths determines degrees
+            dr = abs(r-rold)
+            k += 1
+        end
+        debug>0 && println("|evalpoly(r)| = ",abs(evalpoly(r,cl)))
+        # IDEA: if dr>tol; return roots[1:jr-1]  # failed
+        for k=1:p; cp[k]=cl[k]; end       # overwrite cp as workspace
+        # deflate poly from cp workspace back into cl coeffs (degree p-1)
+        cl[p] = cl[p+1]      # start deflation downwards recurrence
+        cl = cl[1:p]         # trunc len by one
+        for k=p-1:-1:1; cl[k] = cp[k+1] + r*cl[k+1]; end
+        rvals[jr] = cp[1]+r*cl[1]     # final recurrence evals the poly at r
+        roots[jr] = r            # copy out answer
+    end
+    return roots, rvals
+end
+    
+function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth="PR")
+    """
+    roots, derivs = find_near_roots(vals, nodes;
+                                    rho=1.0, fac=nothing, meth="PR")
 
     Returns complex-valued roots of unique polynomial approximant g(z)
     matching the vector of `vals` at the vector `nodes`.  The nodes
@@ -16,6 +70,11 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     `fac` allows user to pass in a pre-factorized (eg LU) object for
     the Vandermonde matrix. This accelerates things by 3us for 15 nodes.
 
+    `meth` controls method for polynomial root-finding:
+          "PR" - PolynomialRoots.roots()
+          "PR5" - PolynomialRoots.roots5() degree-5 only (worse perf)
+          "F" - few_poly_roots local attempt
+
     To do:
     1) template so compiles for known n (speed up roots? poly eval?)
     2) compare Boyd version using Cheby points (needs twice the degree)
@@ -29,12 +88,20 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     else
         c = fac \ vals       # solve via passed-in LU factorization of V (1.5us)
     end
-    roots = PolynomialRoots.roots(c)       # find all roots (typ 7-10us)
-    #roots = PolynomialRoots.roots5(c[1:6])   # find roots only degree-5 (4us)
+    if meth=="PR"
+        roots = PolynomialRoots.roots(c)       # find all roots (typ 7-10us)
+    elseif meth=="PR5"
+        roots = PolynomialRoots.roots5(c[1:6]) # find roots only degree-5 (4us)
+    elseif meth=="F"
+        roots, rvals = few_poly_roots(c,vals,nodes,3)
+        # use rvals as check, or ignore since seg quadrature will just be bad?
+    else println("Unknown meth in find_near_roots!")
+    end
     #roots = AMRVW.roots(c)                # 10x slower (~100us)
     #roots = roots_companion(reverse(c))   # also 10x slower (~100us)
     #return roots, empty(roots)   # exit for speed test of c-solve + roots only
-    # Solve roots = (t+1/t)/2 to get t (Joukowsky map) values (1 us)
+
+    # now solve roots = (t+1/t)/2 to get t (Joukowsky map) values (1 us)
     t = @. roots + sqrt(roots^2 - 1.0)
     rhos = abs.(log.(abs.(t)))        # Bernstein param for each root
     nkeep = sum(rhos .< rho)          # then keep t with e^-rho < t < e^rho
@@ -44,9 +111,8 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing)
     derc = Vector{typeof(c[1])}(undef,n-1)    # alloc
     for (i,r) in enumerate(roots)     # (1us for 14 roots degree 14)
         for k=1:n-1
-            derc[k] = k*c[k+1]        # coeffs of deriv of poly, no alloc
+            derc[k] = k*c[k+1]        # coeffs of deriv of poly, no alloc loop
         end
-        #derc .= c[2:end] .* (1:n-1)   # matlab-style gave many alloc (400kB for 250 segs)
         derivs[i] = Base.evalpoly(r,derc)   # eval at root (14 ns)
     end
     return roots, derivs

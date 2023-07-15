@@ -29,7 +29,7 @@ for M = [10 100]
         Am, Em, segsm, nem = realmyadap(Hm,ω,η,tol=tol)   # b'mark no tuple out
         tobj = @benchmark realmyadap($Hm,ω,η,tol=tol)
         tm = median(tobj.times)/1e6      # convert ns to ms
-        Ap, Ep, segsp, nep = realquadinv(Hm,ω,η,tol=tol)
+        Ap, Ep, segsp, nep = realquadinv(Hm,ω,η,tol=tol, verb=1)
         tobj = @benchmark realquadinv($Hm,ω,η,tol=tol)
         tp = median(tobj.times)/1e6
         @printf "%d\t%d\t%d\t%.2g\t%d\t%.2g\t%.2g\t%.2g\n" M n nem tm nep tp nem/nep tm/tp

@@ -25,7 +25,7 @@ using PolynomialRoots     # low-order faster roots
 using AMRVW               # reliable roots in O(N^2)
 using NonlinearEigenproblems   # n>1 matrix case, NEP and PEP solvers
 using LinearAlgebra
-export find_near_roots, BZ_denominator_roots, roots_companion
+export find_near_roots, BZ_denominator_roots, roots_companion, few_poly_roots
 include("complex.jl")
 
 using QuadGK         # SGJ Pkg
