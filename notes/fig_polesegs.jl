@@ -1,19 +1,19 @@
-# main development and testing area for Int1DBZ ideas.
-# Barnett June-July 2023. 7/4/23 matrix case, also works for n=1 scalar.
+# a fig for poles subtraction note. Barnett 7/21/23
+# run with:
+#  from Int1DBZ:   julia -t1 --project=.
+#  julia> include("../notes/fig_polesegs.jl")
+
 using Int1DBZ
 using Printf
 using OffsetArrays
 using StaticArrays
-using LinearAlgebra
-BLAS.set_num_threads(1)
 using Random.Random
-using TimerOutputs
-using Gnuplot
+using Gnuplot        # crappy for now
 
 n=8             # matrix size for H (1:scalar)
 M=10            # max mag Fourier freq index (eg 200 to make fevals slow)
 η=1e-5; ω=0.5; tol=1e-6; mtail = 1e-2;
-verb = 0
+
 Random.seed!(0)         # set up 1D BZ h(x) for denominator
 if false && n==1        # [obsolete] scalar case without SMatrix-valued coeffs
     Hm = OffsetVector(randn(ComplexF64,2M+1),-M:M)  # F-coeffs of h(x)
@@ -30,41 +30,30 @@ end
 xr = BZ_denominator_roots(Hm,ω,η);     # count roots (NEVs)
 @printf "global %d roots (or NEVs) of which %d η-near Re axis.\n" length(xr) sum(abs.(imag.(xr)).<10η)
 
-# for use w/ julia -t1 --track-allocation=user --project=.
-#Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=0.8)
-#Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol);
-#stop
-
-# benchmark various 1D BZ quadr methods...
-TIME = TimerOutput()
 #Aa = realadap(Hm,ω,η,tol=tol, verb=1)
 #@printf "\trealadap integral Aa = "; println(Aa)
-#TIME(realadap)(Hm,ω,η,tol=tol)
 Al = realadap_lxvm(Hm,ω,η,tol=tol)
-TIME(realadap_lxvm)(Hm,ω,η,tol=tol)    # TimerOutputs no $Hm interpolation :(
 @printf "\trealadap_lxvm ans Al = "; println(Al)
 Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol, verb=1)
 @printf "\tabs(Am-Al)=%.3g\n" abs(Am-Al)
-TIME(realmyadap)(Hm,ω,η,tol=tol)    # (timing valid since func not passed in :)
-if (verb>0)          # show adaptivity around poles (roots of denom)
-    @gp :realmyadap real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
-    plot!(segs,:realmyadap)
-end
-rho0=1.0  #0.8    # for readquadinv; gets slower either side
-rmeth="PR"
+
+@gp real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
+plot!(segs)
+@gp :- yrange=[-.5,.5] xlabel="Re k" ylabel="Im k"
+@gp :- title="(a) plain adaptive GK"
+save(term="epscairo size 7,2", output="segsa.eps")    # inches
+
+rho0=1.0         # for readquadinv
+rmeth="PR"        # root-finding meth
 Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0,rootmeth=rmeth,verb=1)
 @printf "\tabs(Ap-Al)=%.3g\n" abs(Ap-Al)
-TIME(realquadinv)(Hm,ω,η,tol=tol,rho=rho0,rootmeth=rmeth)
-print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
-if (verb>0)
-    @gp :realquadinv real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
-    plot!(segs,:realquadinv)
-end
-#Gnuplot.quitall()
+@gp real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
+plot!(segs)
+@gp :- yrange=[-.5,.5]  xlabel="Re k" ylabel="Im k"
+@gp :- title="(b) pole-subtracting adaptive GK"
+save(term="epscairo", output="segsb.eps")   # size seems to be remembered
 
-#=
-using Profile
-@profile (for i=1:200;
-          Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0); end)
-Profile.print()
-=#
+# sys call via backquotes: note doesn't like wildcards (OS-dependent)...
+run(`mv segsa.eps segsb.eps ../notes/`)
+
+#Gnuplot.quitall()

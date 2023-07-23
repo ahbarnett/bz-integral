@@ -1,0 +1,272 @@
+\documentclass[11pt]{article}
+
+\textwidth 6.5in
+\oddsidemargin=0in
+\evensidemargin=0in
+\textheight 9in
+\topmargin -0.5in
+
+\usepackage{graphicx,bm,amssymb,amsmath,amsthm}
+
+\usepackage{showlabels}
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\ben}{\begin{enumerate}}
+\newcommand{\een}{\end{enumerate}}
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}} 
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\ba}{\begin{align}} 
+\newcommand{\ea}{\end{align}}
+\newcommand{\bse}{\begin{subequations}} 
+\newcommand{\ese}{\end{subequations}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\bfi}{\begin{figure}}
+\newcommand{\efi}{\end{figure}}
+\newcommand{\ca}[2]{\caption{#1 \label{#2}}}
+\newcommand{\ig}[2]{\includegraphics[#1]{#2}}
+\newcommand{\tbox}[1]{{\mbox{\tiny #1}}}
+\newcommand{\mbf}[1]{{\mathbf #1}}
+\newcommand{\half}{\mbox{\small $\frac{1}{2}$}}
+\newcommand{\vt}[2]{\left[\begin{array}{r}#1\\#2\end{array}\right]} % 2-col-vec
+\newcommand{\mt}[4]{\left[\begin{array}{rr}#1&#2\\#3&#4\end{array}\right]} % 2x2
+\newcommand{\eps}{\varepsilon}
+\newcommand{\bigO}{{\mathcal O}}
+\newcommand{\sfrac}[2]{\mbox{\small $\frac{#1}{#2}$}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\DeclareMathOperator{\re}{Re}
+\DeclareMathOperator{\im}{Im}
+\DeclareMathOperator{\tr}{Tr}
+\DeclareMathOperator{\res}{res}
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{alg}[thm]{Algorithm}
+\newtheorem{pro}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{rmk}[thm]{Remark}
+\newtheorem{conj}[thm]{Conjecture}
+% this work...
+\newcommand{\om}{\omega}
+\newcommand{\tH}{\tilde H}
+
+
+\begin{document}
+\title{Efficient adaptive quadrature for meromorphic integrands with nearby poles}
+%  Brillouin zone integrands}
+\author{Alex Barnett}
+\date{\today}
+\maketitle
+\begin{abstract}
+  % flip around to present numerical problem first?
+  The computation of density of states and linear responses of crystalline
+  quantum materials requires periodic integrals over a Brillouin zone such as $[0,2\pi)^3$.
+  When using iterated integration,
+  the innermost 1D integral has a meromorphic integrand
+  with typically several poles of distance $\bigO(\eta)$ from the real axis,
+  $\eta$ being a broadening or temperature parameter.
+  Conventional adaptive quadrature requires $\bigO(\log 1/\eta)$ subdivisions to
+  handle each such pole, and thus suffers at the small $\eta$ values needed in applications.
+  We present a pole-subtracting adaptive quadrature which, in contrast,
+  needs around one subdivision per pole regardless of $\eta$.
+  In practice this leads to an order of magnitude less integrand evaluations,
+  and a commensurate acceleration factor in the case of more expensive integrands
+  involving even small matrix inverses.
+\end{abstract}
+
+We present a technique to defray the somewhat high
+cost due to the many levels of geometric refinement induced by
+an integrand with nearby poles in the complex plane
+when using standard single variable adaptive integration.
+Our motivating application is in quantum physics, although such meromorphic
+integrands are expected to appear in other scientific applications such as
+frequency-domain wave problems.
+
+Consider a crystalline quantum system with band Hamiltonian $H(k)$.
+Let $k$ denote the $2\pi$-periodic wavevector (a scalar since we are in 1D), and
+the Brillouin zone we may take as any periodic interval, eg, $[0,2\pi)$.
+We are handed a band Hamiltonian function in the form of a finite Fourier
+series
+\be
+H(k) = \sum_{m=-M}^M H_m e^{imk}
+\label{Hk}
+\ee
+which has $2M+1$ terms. $H$ and each $H_m$ are matrices of size $n$
+(given in some Wannier basis that we need not be concerned about here).
+We refer to the case $n=1$ as scalar.
+For CCQ applications, $n$ is not large.
+In the application, $H(k)$ is self-adjoint for all $k\in\R$,
+equivalent to the symmetry $H_m^* = H_{-m}$ for all $m$, where
+$^*$ indicates the complex transpose (Hermitian conjugate).
+
+Given $M$, $\{H_m\}$ as above, $\om\in \R$, and $\eta\ge0$,
+the paradigm integration task is to evaluate
+\be
+A = A(\om,\eta) \;:=\;
+\int_{0}^{2\pi} \tr\, [(\om +i\eta)I - H(k)]^{-1} dk
+\; = \;
+\int_{0}^{2\pi} f(k) dk,
+\label{A}
+\ee
+where we have abbreviated the integrand by $f$.
+The inverse may be interpreted as a Green's function, and $\eta$
+a possible broadening due to temperature, disorder, interactions, etc.
+The density of states (DOS) at energy $\om$ is then
+\be
+\rho(\om) = -\frac{1}{\pi}\im A(\om,\eta).
+\label{DOS}
+\ee
+% *** Tr and Im commute, but conceptuially shoudl the Tr be outermost?
+The above is the simple case of constant matrix $(\om+i\eta)I$; this
+can be a more general non-Hermitian matrix often denoted by
+$\Sigma_\om$, still independent of $k$.
+% although if not, that would just modify the F series coeffs for H.
+
+The following is the key to our proposal for this application.
+\begin{pro}
+  Let $H$ be defined by \eqref{Hk}, with $n\ge 1$, and let $\om\in\R$, $\eta>0$.
+  Then the scalar integrand $f$ in \eqref{A} is meromorphic throughout $\C$.
+\end{pro}
+\begin{proof}
+  $(\omega+i\eta)I - H(k)$ is a holomorphic matrix-valued function in $\C$,
+  thus its inverse is a meromorphic matrix-valued function
+  (see, eg, Smith normal form and the Keldysh theorem reviewed in
+  \cite{beyn12,NEVPrev}).
+  Its trace is therefore also meromorphic.
+\end{proof}
+
+A conventional numerical method for \eqref{A} is
+to apply adaptive Gauss--Kronrod integration on the real axis.
+This was proposed and tested for the innermost integral in \cite{autobz}.
+When $\eta\ll1$ and $\om$ is in a band (meaning there is as least one
+$k\in\R$ where $H(k)=\om$), this adaptive scheme is expected
+to subdivide intervals down to a $k$-scale of about $\eta$, giving $\bigO(\log 1/\eta)$ cost.
+We describe and test a faster method with uniform cost as $\eta\to 0$.
+
+\begin{rmk}
+  This note accompanies Julia benchmarking codes in \texttt{Int1DBZ}.
+  All experiments are on a Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark score 2640 (1 thread), using AC power.
+  \end{rmk}
+
+
+% sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
+\section{Pole subtraction on a single interval}
+
+Consider the following integral over the standard interval,
+and some $p$-node quadrature approximation,
+\be
+I := \int_{-1}^1 f(x) dx
+\;\approx\;
+I_p := \sum_{j=1}^p w_j f(x_j)
+\label{I}
+\ee
+where $f$ is meromorphic, and $x_j$ and $w_j$ are nodes and weights for $[-1,1]$.
+We take $p$ small, ie, less than 20.
+
+Fix a Bernstein ellipse parameter $\rho>0$; typically $\rho \approx 1.0$ is good.
+Let all poles of $f$ be simple (the generic case).
+Let no pole of $f$ coincide with any $x_j$.
+Let $f_j = f(x_j)$ be the given evaluations of the integrand.
+The basic pole subtraction proceeds as follows.
+\ben
+\item Find the coefficients $\mbf{c}$
+  of a polynomial approximation $\tilde g(x)$ to $g(x) := 1/f(x)$.
+  A simple way to do this that does not require any new function evaluations
+  is via a backward-stable solve of the
+  $p\times p$ Vandermonde system $V\mbf{c} = \mbf{g}$, where
+  $V_{jk} = x_j^{k-1}$, for $j,k = 1,\dots,p$,
+  the monomial coefficient vector is $\mbf{c} := \{c_0,\dots,c_{p-1}\}$,
+  and the data vector is $\mbf{g} := \{1/f_1,\dots,1/f_p\}$.
+  Then $\tilde g(x) = c_0 + c_1x + c_2 x^2 + \dots c_{p-1}x^{p-1}$.
+\item
+  Find all roots $r_k$, $k=1,\dots,K$
+  of $\tilde g$ that lie within the Bernstein $\rho$-ellipse for $[-1,1]$.
+  This can be a standard library call, but we also compare a custom method
+  using Newton's method and deflation.
+\item
+  Extract the residues $R_k$, $k=1,\dots,K$ of each corresponding pole in $f$,
+  simply the reciprocal of the derivative of the polynomial at the root:
+  \be
+  R_k = \frac{1}{\tilde g'(r_k)}~.
+  \ee
+  Since we assumed each pole was simple, each $R_k$ is finite.
+\item Subtract each simple pole $R_k/(x-r_k)$ from $f(x)$, and instead
+  add in its analytic integral over $[-1,1]$ namely $R_k \log (1-r_k)/(-1-r_k)$.
+  After subtraction, $f$ is analytic in the ellipse, and thus the quadrature
+  rule is accurate.
+  Summing over $K$ poles, the pole-subtracted quadrature rule is thus
+  \be
+  I^{\tbox{ps}}_p \;:=\;
+  I_p +
+  \sum_{k=1}^K R_k \biggl(
+  \log\frac{1-r_k}{-1-r_k} -
+  \sum_{p=1}^P w_j \frac{1}{x_j - r_k}
+  \biggr).
+  \ee
+\een
+In our case we choose the quadrature rule to be GK in which case an estimate
+for the errors of both $I_p$ and of $I^{\tbox{ps}}_p$ are available.
+In the adaptive context we simply take the smaller of the two.
+Some effort may be saved by breaking out of the above steps at step 2
+if $K>4$, since a large number of poles (approaching $p$)
+cannot be reliably fit and subtracted.
+ 
+***
+
+
+We test two methods for rootfinding: a) the library {\tt PolynomialRoots.jl},
+and b) our own algorithm which removes roots sequentially by Newton rootfinding
+followed by deflation to factor out the root and reduce the degree by one.
+
+
+Higher-order poles give an infinite residue in the above. *** discuss.
+
+  
+\bfi % fffffffffffffffffffffffffffffffffffffffffffffff  run: fig_polesegs.jl
+\ig{width=\textwidth}{segsa}\\
+\ig{width=\textwidth}{segsb}
+\ca{Location of poles of integrand $f$ (red crosses),
+  and comparison of final interval segmentation
+  used by (a) plain adaptive GK vs (b) proposed pole-fitting adaptive GK.
+  In (a) there are $n_f = 6045$ function evaluations (not shown) and 202 final segments
+  (shown in black), whereas in (b), $n_f=675$ and there are 23 final segments
+  (of which 11 are plain GK segments shown in black, and the other 12
+  are pole-subtracting GK segments shown in green).
+  Note the geometric subdivision in (a) near each of the
+  eight poles near the real axis (corresponding to band intersections),
+  and the $\bigO(1)$ pole-subtracting segment per pole in (b).
+  The integrand $f(k)$ is defined from a matrix size
+  $n=8$, maximum frequency $M=10$, temperature $\eta=10^{-5}$,
+  tolerance $\eps=10^{-6}$, $\omega=0.5$, and iid normally-random
+  Fourier coefficients with geometric decay to $10^{-2}$ by the maximum frequency.
+  The function is the same in both cases, with the same GK $(7,15)$ rule.
+  CPU times are 20ms for (a) and 3.3ms for (b).
+}{f:polesegs}
+\efi
+
+
+\section{Adaptive integration with pole subtraction}
+  
+The goal is numerically to approximate with given relative tolerance $\eps$ the
+integral
+\be
+A := \int_0^{2\pi} f(x) dx.
+\label{Aagain}
+\ee
+We fix a Gauss rule with $q$ points nested into a Kronrod rule with $2q+1$ points.
+We test with $q=7$, meaning each segment uses $p=15$ evaluations.
+
+See Fig.~\ref{f:polesegs}.
+
+
+
+
+\bibliographystyle{abbrv}
+\bibliography{refs}
+
+\end{document}
