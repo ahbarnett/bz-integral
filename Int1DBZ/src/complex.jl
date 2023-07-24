@@ -99,10 +99,11 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth
     elseif meth=="F"
         roots, rvals = few_poly_roots(c,vals,nodes,4)
         # use rvals as check, or ignore since seg quadrature will just be bad?
+    elseif meth=="C"
+        roots = roots_companion(reverse(c))   # also 10x slower (~100us)
     else println("Unknown meth in find_near_roots!")
     end
     #roots = AMRVW.roots(c)                # 10x slower (~100us)
-    #roots = roots_companion(reverse(c))   # also 10x slower (~100us)
     #return roots, empty(roots)   # exit for speed test of c-solve + roots only
 
     # now solve roots = (t+1/t)/2 to get t (Joukowsky map) values (1 us)

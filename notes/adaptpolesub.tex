@@ -7,6 +7,7 @@
 \topmargin -0.5in
 
 \usepackage{graphicx,bm,amssymb,amsmath,amsthm}
+\usepackage{hyperref}
 
 \usepackage{showlabels}
 
@@ -79,6 +80,8 @@
   involving even small matrix inverses.
 \end{abstract}
 
+\section{Introduction}
+
 We present a technique to defray the somewhat high
 cost due to the many levels of geometric refinement induced by
 an integrand with nearby poles in the complex plane
@@ -148,14 +151,17 @@ $k\in\R$ where $H(k)=\om$), this adaptive scheme is expected
 to subdivide intervals down to a $k$-scale of about $\eta$, giving $\bigO(\log 1/\eta)$ cost.
 We describe and test a faster method with uniform cost as $\eta\to 0$.
 
-\begin{rmk}
-  This note accompanies Julia benchmarking codes in \texttt{Int1DBZ}.
+%\begin{rmk}
+This note accompanies Julia benchmarking codes in the package implementation
+\texttt{Int1DBZ} in\\
+  \url{https://github.com/ahbarnett/bz-integral}\\
   All experiments are on a Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark score 2640 (1 thread), using AC power.
-  \end{rmk}
+%  \end{rmk}
 
 
 % sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
-\section{Pole subtraction on a single interval}
+\section{Methods}
+\subsection{Pole subtraction on a single interval}
 
 Consider the following integral over the standard interval,
 and some $p$-node quadrature approximation,
@@ -168,7 +174,9 @@ I_p := \sum_{j=1}^p w_j f(x_j)
 where $f$ is meromorphic, and $x_j$ and $w_j$ are nodes and weights for $[-1,1]$.
 We take $p$ small, ie, less than 20.
 
-Fix a Bernstein ellipse parameter $\rho>0$; typically $\rho \approx 1.0$ is good.
+Fix a Bernstein ellipse parameter $\rho>0$, recalling that its
+semiaxes are $\cosh\rho$ and $\sinh\rho$.
+Typically $\rho \approx 1.0$ works well.
 Let all poles of $f$ be simple (the generic case).
 Let no pole of $f$ coincide with any $x_j$.
 Let $f_j = f(x_j)$ be the given evaluations of the integrand.
@@ -196,39 +204,121 @@ The basic pole subtraction proceeds as follows.
   \ee
   Since we assumed each pole was simple, each $R_k$ is finite.
 \item Subtract each simple pole $R_k/(x-r_k)$ from $f(x)$, and instead
-  add in its analytic integral over $[-1,1]$ namely $R_k \log (1-r_k)/(-1-r_k)$.
+  add in its analytic integral over $[-1,1]$ namely $R_k \log[(1-r_k)/(-1-r_k)]$,
+  using the usual branch cut for log.
   After subtraction, $f$ is analytic in the ellipse, and thus the quadrature
   rule is accurate.
-  Summing over $K$ poles, the pole-subtracted quadrature rule is thus
+  Summing over $K$ poles, the pole-subtracted rule is thus
   \be
   I^{\tbox{ps}}_p \;:=\;
   I_p +
   \sum_{k=1}^K R_k \biggl(
   \log\frac{1-r_k}{-1-r_k} -
-  \sum_{p=1}^P w_j \frac{1}{x_j - r_k}
+  \sum_{j=1}^p w_j \frac{1}{x_j - r_k}
   \biggr).
+  \label{ps}
   \ee
 \een
-In our case we choose the quadrature rule to be GK in which case an estimate
-for the errors of both $I_p$ and of $I^{\tbox{ps}}_p$ are available.
-In the adaptive context we simply take the smaller of the two.
+
+\bfi % fffffffffffffffffffffffffffffffffffffffffffffffffff
+\centering
+\ig{width=4in}{spurious}
+\ca{The case where a nearby root of $f$ causes $g=1/f$ to have a pole which
+  induces spurious roots in the polynomial approximant $\tilde g$ of $g$.
+  Here $f(x) = \cot \omega(x-z_0)$, with $z_0=0.3+10^{-3}i$, and a zero at
+  $z_0-\pi/2$ is shown by the cross.}{f:spurious}
+\efi
 Some effort may be saved by breaking out of the above steps at step 2
-if $K>4$, since a large number of poles (approaching $p$)
-cannot be reliably fit and subtracted.
- 
-***
+if, say, $K>4$, since a large number of poles (approaching $p/2$)
+cannot be reliably fit nor subtracted.
 
+Here are some simple tests for non-rational functions showing successes and failures:
+\bi
+\item
+  We check $f(x) = 1/sin(\omega(x-z_0))$ where a pole is at $z_0=0.3 + \delta i$,
+  with $\delta = 10^{-3}$,
+  and $\omega=2.0$ controls the density of poles.
+  The line of poles is $z_0 + n\pi/\omega$ for $n\in\Z$, and all residues are
+  $1/\omega$.
+  Two poles are found in the $\rho=1.0$ Bernstein ellipse and subtracted.
+  The integral $I$ from \eqref{I} is known analytically, and is of order unit sized.
+  Using the $p=16$ Gauss--Legendre rule,
+  pole-subtraction \eqref{ps} gives an error $|I^\tbox{ps}_p - I| \approx 5.5\times10^{-13}$.
+  In contrast, adaptive GK using a $(7,15)$-node rule required 1185 function
+  evaluations (and 40 final segments)
+  to get an estimated error $10^{-12}$ (but actual error $10^{-15}$).
+\item
+  Changing to $\delta=10^{-10}$, the pole-subtraction error is hardly changed,
+  but adaptive GK requires 5 million (!) function evaluations for 12 digits.
+\item
+  The nearest distance of a pole from any node was $0.018$ above.
+  We now illustrate the ``pole-hitting'' failure mode.
+  Moving to $z_0=x_{10} + i\delta$ minimizes this distance to become $\delta$.
+  Then at
+  $\delta=10^{-5}$ the error grows to $|I^\tbox{ps}_p - I| \approx 1.5\times 10^{-7}$,
+  and appears to scale as $\bigO(\delta^{-2})$.
+  This is presumably rounding error but the scaling needs to be understood.
+\item
+  The above function was the inverse of an entire function. However, an
+  obvious failure mode of this scheme for general meromorphic $f$ is when $f$ has
+  a root near $[-1,1]$,
+  so that $g$ has a pole and hence $\tilde g$ is a bad approximation to $g$.
+  We test this by switching to $f(x) = \cot \omega(x-z_0)$, which has the same
+  poles as above, but also interleaved roots. Is it also analytically integrable.
+  We change to $\omega=1$, so that
+  the nearest root of $f$ is about $-1.27 + i\delta$.
+  With $\rho=0.7$ there is one root $r_1$ of $\tilde g$ found, but its accuracy
+  is only $2.4\times 10^{-6}$, and this is reflected by a poor error of
+  $|I^\tbox{ps}_p - I| \approx 4\times 10^{-4}$.
 
-We test two methods for rootfinding: a) the library {\tt PolynomialRoots.jl},
-and b) our own algorithm which removes roots sequentially by Newton rootfinding
-followed by deflation to factor out the root and reduce the degree by one.
+  Setting $\rho=1$ encloses the nearest root of $f$ so that a spurious
+  ellipse of roots of $g$ is found within the Bernstein ellipse; all $p$ roots
+  (the maximum possible for $\tilde g$) are found, an indicator of failure.
+  See Fig.~\ref{f:spurious}.
+  In practice less than $p/2$
+  poles may be subtracted without loss of accuracy.
+\item
+  A third type of failure is a higher-order pole in $f$.
+  We square the original function to $f(x) = 1/\sin^2(\omega(x-z_0))$, also analytically
+  integrable. We return to $\omega=2$, which gives two double-poles in the $\rho=1$
+  ellipse. For $\delta \ge 10^{-5}$, pole subtraction gives error about $10^{-6}$.
+  Each double pole is approximated by a pair of simple poles
+  separated by around $10^{-6}$ and with residues of $10^4$
+  (rather than their analytical infinite values).
 
+  For $\delta<10^{-6}$ the method fails catastrophically (error $\bigO(\delta^{-1})$)
+  because the separation of the
+  pair of poles pushes one of them mistakenly
+  across the real axis integration contour, causing
+  a change of order the size of its residue.
+  Without further knowledge of the order of the pole, one could not do much better,
+  since the problem of polynomial
+  root-finding has infinite condition number at a double root.
+  By backward stability, given only double-precision data $1/f_j$
+  it is probably unreasonable to get this topology correct.
+  
+  For such a double-pole the ``pole-hitting'' round-off error also exhibits worse scaling
+  of $\bigO(\delta^{-4})$, and increases error to $3\times 10^{-4}$ at $\delta=10^{-3}$.
+\ei
+The above tests used \texttt{demo\_polesub.jl} with various uncommentings.
 
-Higher-order poles give an infinite residue in the above. *** discuss.
+In summary, there are three failure modes:
+\ben
+\item pole-hitting: an $\bigO(\eps_\tbox{mach}/d^2)$ roundoff error if any node
+  is within distance $d$ of any pole.
+\item near zero of $f$: such a pole in $1/f$ reduces the polynomial interpolation
+  accuracy from the nodes on $[-1,1]$ in the usual fashion 
+  according to its Bernstein $\rho$ parameter.
+\item higher-order poles: this is relatively benign in the sense that the method
+  still gets several digits of accuracy, unless the intrinsic ill-conditioning
+\een
+
+In all cases failure it is easy to diagnose.
+*** discuss this using GK pair.
 
   
 \bfi % fffffffffffffffffffffffffffffffffffffffffffffff  run: fig_polesegs.jl
-\ig{width=\textwidth}{segsa}\\
+\ig{width=\textwidth}{segsa}
 \ig{width=\textwidth}{segsb}
 \ca{Location of poles of integrand $f$ (red crosses),
   and comparison of final interval segmentation
@@ -250,7 +340,7 @@ Higher-order poles give an infinite residue in the above. *** discuss.
 \efi
 
 
-\section{Adaptive integration with pole subtraction}
+\subsection{Adaptive integration with pole subtraction}
   
 The goal is numerically to approximate with given relative tolerance $\eps$ the
 integral
@@ -259,12 +349,41 @@ A := \int_0^{2\pi} f(x) dx.
 \label{Aagain}
 \ee
 We fix a Gauss rule with $q$ points nested into a Kronrod rule with $2q+1$ points.
+For each segment this gives an estimate $E_p$ of the error for $I_p$ by subtracting
+the value using the nested Gauss rule from that using the Kronrod rule.
+The same may be applied to \eqref{ps} to get an error estimate
+$E^{\tbox{ps}}_p$ for $I^{\tbox{ps}}_p$.
+
+In the adaptive context we simply take the smaller of the two;
+if pole-subtraction fails with a large error, then the usual GK rule is taken.
+
+
+
 We test with $q=7$, meaning each segment uses $p=15$ evaluations.
 
 See Fig.~\ref{f:polesegs}.
 
 
+\section{Results}
 
+
+We test two methods for rootfinding: a) the library {\tt PolynomialRoots.jl},
+and b) our own algorithm which removes roots sequentially by Newton rootfinding
+followed by deflation to factor out the root and reduce the degree by one.
+
+
+
+\section{Discussion}
+
+
+Future ideas:
+\bi
+\item A explicit subtraction of higher-order poles may improve on the 3rd
+  failure method found above.
+\item
+  It may be possible that the (Fast)AAA rational approximation would be
+  better than merely fitting roots of the reciprocal, on the same data $f_j$.
+\ei
 
 \bibliographystyle{abbrv}
 \bibliography{refs}
