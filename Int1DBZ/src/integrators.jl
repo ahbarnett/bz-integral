@@ -141,13 +141,13 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
 end
 
 function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
-                      b::Number, r::gkrule; rho=1.0, verb=0, fac=nothing, rootmeth="PR", maxpolesubint=1e-2)
+                      b::Number, r::gkrule; rho=1.0, verb=0, fac=nothing, rootmeth="PR", maxpolesubint=Inf)
 # pole-correcting version of applygkrule. Changes the input ginvals array.
 # no local g evals; just pass in all vals and reciprocal vals.
 # Barnett 6/30/23
     @assert length(gvals)==length(ginvals)
     s = applygkrule(ginvals,a,b,r)   # create Segment w/ plain GK ans for (a,b)
-    if b-a > maxpolesubint           # save a few pole-sub considerations
+    if b-a > maxpolesubint           # save a few pole-sub considerations? no
         return s
     end
     # now work in local coords wrt std seg [-1,1]...
