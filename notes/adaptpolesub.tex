@@ -70,9 +70,9 @@
   When using iterated integration,
   the innermost 1D integral has a meromorphic integrand
   with typically several poles of distance $\bigO(\eta)$ from the real axis,
-  $\eta$ being a broadening or temperature parameter.
-  Conventional adaptive quadrature requires $\bigO(\log 1/\eta)$ subdivisions to
-  handle each such pole, and thus suffers at the small $\eta$ values needed in applications.
+  $\eta$ being a small broadening or temperature parameter.
+  Conventional adaptive quadrature needs $\bigO(\log 1/\eta)$ subdivisions to
+  handle each such pole, and a consequently large number of integrand evaluations.
   We present a pole-subtracting adaptive quadrature which, in contrast,
   needs around one subdivision per pole regardless of $\eta$.
   In practice this leads to an order of magnitude less integrand evaluations,
@@ -136,7 +136,7 @@ The following is the key to our proposal for this application.
   Then the scalar integrand $f$ in \eqref{A} is meromorphic throughout $\C$.
 \end{pro}
 \begin{proof}
-  $(\omega+i\eta)I - H(k)$ is a holomorphic matrix-valued function in $\C$,
+  $(\omega+i\eta)I - H(k)$ is a holomorphic matrix-valued function of $k\in\C$,
   thus its inverse is a meromorphic matrix-valued function
   (see, eg, Smith normal form and the Keldysh theorem reviewed in
   \cite{beyn12,NEVPrev}).
@@ -154,8 +154,9 @@ We describe and test a faster method with uniform cost as $\eta\to 0$.
 %\begin{rmk}
 This note accompanies Julia benchmarking codes in the package implementation
 \texttt{Int1DBZ} in\\
-  \url{https://github.com/ahbarnett/bz-integral}\\
-  All experiments are on a Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark score 2640 (1 thread), using AC power.
+\url{https://github.com/ahbarnett/bz-integral}\\
+This uses allocation-free Fourier series evaluators by Lorenzo van Mu\~noz.
+  All experiments are on a Ryzen 2nd-gen 5700U laptop, 8-core, CPUMark score 2640 (1 thread), using AC power, with Julia 1.9.1, restricted to 1 thread.
 %  \end{rmk}
 
 
@@ -174,13 +175,14 @@ I_p := \sum_{j=1}^p w_j f(x_j)
 where $f$ is meromorphic, and $x_j$ and $w_j$ are nodes and weights for $[-1,1]$.
 We take $p$ small, ie, less than 20.
 
-Fix a Bernstein ellipse parameter $\rho>0$, recalling that its
+We address only poles of $f$ lying in a Bernstein ellipse of parameter $\rho>0$,
+recalling that its
 semiaxes are $\cosh\rho$ and $\sinh\rho$.
 Typically $\rho \approx 1.0$ works well.
-Let all poles of $f$ be simple (the generic case).
-Let no pole of $f$ coincide with any $x_j$.
+Let all such poles of $f$ be simple (the generic case),
+and let no pole of $f$ coincide with any $x_j$.
 Let $f_j = f(x_j)$ be the given evaluations of the integrand.
-The basic pole subtraction proceeds as follows.
+The basic pole subtraction using only these evaluations proceeds as follows.
 \ben
 \item Find the coefficients $\mbf{c}$
   of a polynomial approximation $\tilde g(x)$ to $g(x) := 1/f(x)$.
@@ -232,10 +234,12 @@ Some effort may be saved by breaking out of the above steps at step 2
 if, say, $K>4$, since a large number of poles (approaching $p/2$)
 cannot be reliably fit nor subtracted.
 
+\subsection{Tests and failure modes of pole subtraction on one interval}
+
 Here are some simple tests for non-rational functions showing successes and failures:
 \bi
 \item
-  We check $f(x) = 1/sin(\omega(x-z_0))$ where a pole is at $z_0=0.3 + \delta i$,
+  We check $f(x) = 1/\sin \omega(x-z_0)$ where a pole is at $z_0=0.3 + \delta i$,
   with $\delta = 10^{-3}$,
   and $\omega=2.0$ controls the density of poles.
   The line of poles is $z_0 + n\pi/\omega$ for $n\in\Z$, and all residues are
@@ -300,7 +304,8 @@ Here are some simple tests for non-rational functions showing successes and fail
   For such a double-pole the ``pole-hitting'' round-off error also exhibits worse scaling
   of $\bigO(\delta^{-4})$, and increases error to $3\times 10^{-4}$ at $\delta=10^{-3}$.
 \ei
-The above tests used \texttt{demo\_polesub.jl} with various uncommentings.
+The above tests used \texttt{demo\_polesub.jl} with various uncommentings;
+this code contains the analytic antiderivate formulae used for the error reporting.
 
 In summary, there are three failure modes:
 \ben
@@ -348,28 +353,106 @@ integral
 A := \int_0^{2\pi} f(x) dx.
 \label{Aagain}
 \ee
-We fix a Gauss rule with $q$ points nested into a Kronrod rule with $2q+1$ points.
-For each segment this gives an estimate $E_p$ of the error for $I_p$ by subtracting
+We fix a Gauss rule with $q$ nodes nested into a Kronrod rule giving $2q+1$ total nodes.
+We test with a standard choice $q=7$, meaning each segment uses $p=15$ evaluations,
+appropriate for say 5--10 digit accuracies.
+This gives an estimate $E_p$ of the error for $I_p$ by subtracting
 the value using the nested Gauss rule from that using the Kronrod rule.
 The same may be applied to \eqref{ps} to get an error estimate
 $E^{\tbox{ps}}_p$ for $I^{\tbox{ps}}_p$.
+For a segment $(a,b)$, a rescaling by $(b-a)$ is applied to the formulae
+\eqref{I} and \eqref{ps}.
+For any segment, the method with the minimum error is chosen, ie,
+if $E^{\tbox{ps}}_p < E_p$, then
+$I \leftarrow I^{\tbox{ps}}_p$ and $E \leftarrow E^{\tbox{ps}}_p$, otherwise
+$I \leftarrow I_p$ and $E \leftarrow E_p$.
+The values $I$ and $E$ are stored as properies of the segment.
 
-In the adaptive context we simply take the smaller of the two;
-if pole-subtraction fails with a large error, then the usual GK rule is taken.
+The usual adaptive GK algorithm then proceeds:
+as long as a global error estimate exceeds the user tolerance,
+the segment with the largest $E$ is pulled from the heap,
+split into two at its midpoint, the quadrature approximations for the two children
+evaluated (via either standard GK or pole-subtracted GK, whichever has smaller $E$),
+and the two children returned to the heap.
+If pole-subtraction fails for any segment, either plain GK is successful
+(eg in the neighborhood of a root of $f$ and relatively far from poles of $f$),
+or refinement occurs until one of the two methods locally succeeds.
 
-
-
-We test with $q=7$, meaning each segment uses $p=15$ evaluations.
-
-See Fig.~\ref{f:polesegs}.
+A simple demo using $H(k)$ with random decaying matrix-valued Fourier coefficients,
+resulting in eight poles near the real axis,
+is given in Fig.~\ref{f:polesegs},
+with the parameters in the caption.
+Note the replacement of refined panels by around 1 panel per nearby pole.
+The function evaluations are reduced by 9x and the CPU time
+of an efficient implementation is 6x faster.
 
 
 \section{Results}
 
+First some empirical timings in Julia for fixed degree $14$ ($p=15$ nodes).
+The Vandermonde solve for $\mbf{c}$ with precomputed LU factorization
+takes 1.5 $\mu$s.
+We test various methods for rootfinding in Julia:
+\ben
+\item
+  The library {\tt PolynomialRoots.jl}, using the Skowron--Gould algorithm \cite{skowron}.
+  This takes around $10$--$20$ $\mu$s to find all roots of a degree $14$ polynomial.
+  There is no way to speed up the library by limiting the number of poles found.
+  We have found it reliable for the small degrees tested.
+  We access this by {\tt meth="PR"}.  
+\item A simple algorithm
+{\tt few\_poly\_roots()}
+  which removes roots sequentially by Newton rootfinding
+  followed by deflation to factor out the root and reduce the degree by one,
+  until a user-specified $n_r$ (default 3) roots are found.
+  The first Newton guess starts at the node with minimum $1/f_j$; others start at
+  $0$ with respect to the standard interval $[-1,1]$.
+  The cost is $0.5$ $\mu$s times $n_r$.
+  We access this by {\tt meth="F"}.
+\een
+We find that the latter is faster, but results in
+poorer pole subtraction (more segment splitting).
+Thus for expensive integrands ($n$ large, say $\ge 10$), the former is preferred.
 
-We test two methods for rootfinding: a) the library {\tt PolynomialRoots.jl},
-and b) our own algorithm which removes roots sequentially by Newton rootfinding
-followed by deflation to factor out the root and reduce the degree by one.
+\begin{table}   % ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+  \centering
+  \begin{tabular}{r|r|rr|rr|rr|}
+    % now paste from term output of code...
+  $M$ & $n$ & \multicolumn{2}{c}{standard GK} & \multicolumn{2}{c}{pole-sub. GK} & \multicolumn{2}{c}{ratios}\\
+  && $n_\tbox{evals}$ & $t$ (ms) & $n_\tbox{evals}$ & $t$ (ms) & evals & time\\
+  \hline
+10 & 1 & 3435 & 0.14 & 225 & 0.19 & 15 & 0.71\\ 
+10 & 2 & 4335 & 0.25 & 375 & 0.32 & 12 & 0.79\\ 
+10 & 4 & 5805 & 0.69 & 765 & 0.7 & 7.6 & 0.98\\ 
+10 & 8 & 6045 & 20 & 795 & 3.3 & 7.6 & 6\\
+\hline
+100 & 1 & 29985 & 7.4 & 3105 & 3.2 & 9.7 & 2.3\\ 
+100 & 2 & 20505 & 5.6 & 4995 & 5.3 & 4.1 & 1\\ 
+100 & 4 & 42525 & 27 & 5565 & 7.9 & 7.6 & 3.4\\ 
+100 & 8 & 52785 & 3.90 & 7485 & 61 & 7.1 & 6.3\\ 
+\hline
+\end{tabular}
+\ca{Numbers of integrand evaluations $n_\tbox{evals}$ and run-times $t$ for
+  standard adaptive GK and our proposed pole-subtraction adaptive GK.
+  Non-integer values are rounded to 2 significant digits.
+The timings and tex for this table are generated by {\tt bench/timingtable.jl}.
+}{t:time}
+\end{table}
+
+We fix $\eta=10^{-5}$ (a small but possible value in applications),
+a target tolerance of $\eps=10^{-6}$,
+and an exponential Fourier coefficient decay to $10^{-2}$ by $|m|=M$.
+We explore integrand complexity ($M$) and matrix size ($n$).
+The results are in Table~\ref{t:time}.
+The improvement in integrand evaluations is around 10x (apart from $n=2$ at $M=100$,
+strangely).
+For low-complexity small $n$ there is no resulting speedup, presumably
+due to the rootfinding and pole-subtraction cost per segment.
+At $n=8$ the speedup is comparable to that expected by integrand evaluation ratio.
+
+Instead choosing $10^{-4}$ for the Fourier decay leads to less near-poles in $f$,
+and slightly worse ratios and speedups. At $n=8$ the results are not affected much.
+To do: test on $n=2$ graphene DOS example.
 
 
 
@@ -380,9 +463,14 @@ Future ideas:
 \bi
 \item A explicit subtraction of higher-order poles may improve on the 3rd
   failure method found above.
-\item
-  It may be possible that the (Fast)AAA rational approximation would be
+\item A Boyd-type solution in the Joukowsky variable rather than the $x$ plane
+  may be preferable, although the polynomial order will double. To try.
+\item It may be possible that the (Fast)AAA rational approximation would be
   better than merely fitting roots of the reciprocal, on the same data $f_j$.
+\item better benchmarking to show the CPU time fraction used on pole-subtraction.
+\item various code speedups: StaticArrays since node-number $p=15$ known and fixed.
+\item only switch on pole-sub when segments sufficiently small.
+\item Middle integral branch-cut-avoiding adaptivity without pole subtraction.
 \ei
 
 \bibliographystyle{abbrv}
