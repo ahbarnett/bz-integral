@@ -98,30 +98,30 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
         else
             rtol = 1e-6   # default
         end
-    end        
+    end
     r = gkrule()       # make a default panel rule
     n = length(r.gw)   # num embedded Gauss nodes, overall "order" n
     V = r.x.^(0:2n)'   # Vandermonde
     fac = lu(V)        # factor it only once
     numevals = 2n+1
-    mid, sca = (b+a)/2, (b-a)/2
-    gvals = map(x -> g(mid + sca*x), r.x)   # allocs, once
+    mid0, sca0 = (b+a)/2, (b-a)/2
+    gvals = map(x -> g(mid0 + sca0*x), r.x)   # allocs, once
     ginvals = 1.0./gvals
     # kick off adapt via mother seg...
-    segs = applypolesub!(gvals,ginvals,a,b,r,rho=rho,verb=verb-2,fac=fac,rootmeth=rootmeth)
-    I, E = segs.I, segs.E          # keep global estimates which get updated
-    segs = [segs]                  # heap needs to be Vector
+    seg = applypolesub!(gvals,ginvals,a,b,r,rho=rho,verb=verb-2,fac=fac,rootmeth=rootmeth)
+    I, E = seg.I, seg.E          # keep global estimates which get updated
+    segs = [seg]                  # heap needs to be Vector
     while E>atol && E>rtol*abs(I) && numevals<maxevals
         s = heappop!(segs, Reverse)            # get worst seg
         verb>1 && @printf "adaptquadinv tot E=%.3g, splitting (%g,%g) of npoles=%d:\n" E s.a s.b s.npoles
         split = (s.b+s.a)/2
         mid, sca = (split+s.a)/2, (split-s.a)/2
-        gvals .= map(x -> g(mid + sca*x), r.x)   # .= in-place
+        map!(x -> g(mid + sca*x), gvals, r.x)
         # for (i,x) in enumerate(r.x); gvals[i] .= g(mid + sca*r.x[i]); end  # loop so no alloc? No, was just the same... due to g() itself??
         ginvals .= 1.0./gvals                    # math cheap; in-place
         s1 = applypolesub!(gvals,ginvals, s.a,split, r,rho=rho,fac=fac,verb=verb-2,rootmeth=rootmeth)
         mid, sca = (s.b+split)/2, (s.b-split)/2
-        gvals .= map(x -> g(mid + sca*x), r.x)
+        map!(x -> g(mid + sca*x), gvals, r.x)
         ginvals .= 1.0./gvals
         s2 = applypolesub!(gvals,ginvals, split,s.b, r,rho=rho,verb=verb-2,fac=fac,rootmeth=rootmeth)
         numevals += 2*(2n+1)
