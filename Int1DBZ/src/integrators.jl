@@ -90,7 +90,11 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
     `verb`=1 gives debug text output, 2 gives segment-level, 3 pole-sub-level
     `rootmeth` controls poly root-finding method (see `find_near_roots()`).
 
-    Notes: Based on miniguadgk.
+    Notes: 1) Based on miniguadgk.
+    2) Timings for filling gvals Vector twice in while-loop:
+    gvals .= map(x -> g(mid+sca*x), r.x)    added 5us (AHB)
+    map!(x -> g(mid+sca*x), gvals, r.x)     added 1us (LXVM)
+    the explicit loop via enumerate is the baseline.
 """
     if atol==0.0          # simpler logic than QuadGK. atol has precedence
         if rtol>0.0
@@ -115,13 +119,12 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
         s = heappop!(segs, Reverse)            # get worst seg
         verb>1 && @printf "adaptquadinv tot E=%.3g, splitting (%g,%g) of npoles=%d:\n" E s.a s.b s.npoles
         split = (s.b+s.a)/2
-        mid, sca = (split+s.a)/2, (split-s.a)/2
-        map!(x -> g(mid + sca*x), gvals, r.x)
-        # for (i,x) in enumerate(r.x); gvals[i] .= g(mid + sca*r.x[i]); end  # loop so no alloc? No, was just the same... due to g() itself??
+        mid, sca = (split+s.a)/2, (split-s.a)/2    # no reuse mid0 (type-instab)
+        for (i,x) in enumerate(r.x); gvals[i] = g(mid + sca*r.x[i]); end   # faster than map! or map
         ginvals .= 1.0./gvals                    # math cheap; in-place
         s1 = applypolesub!(gvals,ginvals, s.a,split, r,rho=rho,fac=fac,verb=verb-2,rootmeth=rootmeth)
         mid, sca = (s.b+split)/2, (s.b-split)/2
-        map!(x -> g(mid + sca*x), gvals, r.x)
+        for (i,x) in enumerate(r.x); gvals[i] = g(mid + sca*r.x[i]); end
         ginvals .= 1.0./gvals
         s2 = applypolesub!(gvals,ginvals, split,s.b, r,rho=rho,verb=verb-2,fac=fac,rootmeth=rootmeth)
         numevals += 2*(2n+1)

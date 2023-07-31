@@ -97,7 +97,7 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth
     elseif meth=="PR5"
         roots = PolynomialRoots.roots5(c[1:6]) # find roots only degree-5 (4us)
     elseif meth=="F"
-        roots, rvals = few_poly_roots(c,vals,nodes,3)
+        roots, rvals = few_poly_roots(c,vals,nodes,3)  # choose nr max # roots
         # use rvals as check, or ignore since seg quadrature will just be bad?
     elseif meth=="C"
         roots = roots_companion(reverse(c))   # also 10x slower (~100us)

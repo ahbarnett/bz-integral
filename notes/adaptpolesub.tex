@@ -222,14 +222,15 @@ The basic pole subtraction using only these evaluations proceeds as follows.
   \ee
 \een
 
-\bfi % fffffffffffffffffffffffffffffffffffffffffffffffffff
+\bfi % fffffffffffffffffffffffffffffffffffffffffffffffffff via: demo_polesub.jl
 \centering
 \ig{width=4in}{spurious}
 \ca{The case where a nearby root of $f$ causes $g=1/f$ to have a pole which
   induces spurious roots in the polynomial approximant $\tilde g$ of $g$.
   Here $f(x) = \cot \omega(x-z_0)$, with $z_0=0.3+10^{-3}i$, and a zero at
   $z_0-\pi/2$ is shown by the cross.}{f:spurious}
-\efi
+\efi  % ffffffffffffffffffffffffffffffffffffffffffffffffff
+
 Some effort may be saved by breaking out of the above steps at step 2
 if, say, $K>4$, since a large number of poles (approaching $p/2$)
 cannot be reliably fit nor subtracted.
@@ -340,9 +341,9 @@ In all cases failure it is easy to diagnose.
   tolerance $\eps=10^{-6}$, $\omega=0.5$, and iid normally-random
   Fourier coefficients with geometric decay to $10^{-2}$ by the maximum frequency.
   The function is the same in both cases, with the same GK $(7,15)$ rule.
-  CPU times are 20ms for (a) and 3.3ms for (b).
+  CPU times are 20ms for (a) and 3ms for (b).
 }{f:polesegs}
-\efi
+\efi  % fffffffffffffffffffffffffffffffffffffffffffffffff
 
 
 \subsection{Adaptive integration with pole subtraction}
@@ -421,16 +422,15 @@ Thus for expensive integrands ($n$ large, say $\ge 10$), the former is preferred
 &&& \multicolumn{3}{c}{standard GK} & \multicolumn{3}{c}{pole-sub. GK} & \multicolumn{2}{c}{ratios}\\ 
 $M$ & $n$ & $t_\tbox{eval}$ ($\mu$s) & $n_\tbox{evals}$ & $t$ (ms) & $t_\tbox{over}$ ($\mu$s) & $n_\tbox{evals}$ & $t$ (ms) & $t_\tbox{over}$ ($\mu$s) & evals & time\\ 
 \hline
-10 & 1 & 0.035 & 3435 & 0.14 & 0.066 & 225 & 0.18 & 12 & 15 & 0.75\\ 
-10 & 2 & 0.055 & 4335 & 0.24 & 0.02 & 375 & 0.31 & 12 & 12 & 0.78\\ 
-10 & 4 & 0.11 & 5805 & 0.69 & 0.092 & 765 & 0.66 & 11 & 7.6 & 1\\ 
-10 & 8 & 3.4 & 6045 & 20 & -0.28 & 795 & 3.3 & 12 & 7.6 & 6.2\\ 
+10 & 1 & 0.035 & 3435 & 0.14 & 0.075 & 225 & 0.082 & 5 & 15 & 1.7\\ 
+10 & 2 & 0.055 & 4335 & 0.25 & 0.061 & 375 & 0.14 & 4.9 & 12 & 1.8\\ 
+10 & 4 & 0.11 & 5805 & 0.68 & 0.11 & 765 & 0.33 & 4.8 & 7.6 & 2.1\\ 
+10 & 8 & 3.4 & 6045 & 20 & -1.4 & 795 & 2.9 & 4.2 & 7.6 & 6.8\\ 
 \hline
-100 & 1 & 0.24 & 29985 & 7.4 & 0.08 & 3075 & 3.1 & 11 & 9.8 & 2.4\\ 
-100 & 2 & 0.26 & 20505 & 5.5 & 0.055 & 4875 & 5 & 12 & 4.2 & 1.1\\ 
-100 & 4 & 0.6 & 42525 & 26 & 0.072 & 5535 & 7.6 & 12 & 7.7 & 3.4\\ 
-100 & 8 & 7.9 & 52785 & 4.1e+02 & -2.7 & 7395 & 64 & 11 & 7.1 & 6.4\\ 
-
+100 & 1 & 0.24 & 29985 & 7.4 & 0.08 & 3075 & 1.7 & 4.8 & 9.8 & 4.3\\ 
+100 & 2 & 0.26 & 20505 & 5.5 & 0.091 & 4875 & 2.9 & 4.9 & 4.2 & 1.9\\ 
+100 & 4 & 0.6 & 42525 & 26 & 0.17 & 5535 & 5.2 & 5.1 & 7.7 & 5\\ 
+100 & 8 & 7.3 & 52785 & 380 & -1.6 & 7395 & 56 & 4.9 & 7.1 & 6.7\\ 
 \hline
 \end{tabular}
 % endpaste
@@ -453,14 +453,18 @@ We explore integrand complexity ($M$) and matrix size ($n$).
 The results are in Table~\ref{t:time}.
 The improvement in integrand evaluations is around 10x (apart from $n=2$ at $M=100$,
 strangely).
-For low-complexity small $n$ there is no resulting speedup, presumably
+For low-complexity small $n$ the speedup is small,
 due to the rootfinding and pole-subtraction cost per segment.
-At $n=8$ the speedup is comparable to that expected by integrand evaluation ratio.
-We see the gaps explained by a rather constant mean overhead of 12 $\mu$s per segment
+At $n=8$ the speedup is close to that expected by integrand evaluation ratio.
+We see the gaps explained by a rather constant mean overhead of 5 $\mu$s per segment
 for pole-subtraction.
+
+*** Test achieved error vs tolerance.
 
 Instead choosing $10^{-4}$ for the Fourier decay leads to less near-poles in $f$,
 and slightly worse ratios and speedups. At $n=8$ the results are not affected much.
+
+
 
 To do: test on $n=2$ graphene DOS example.
 
@@ -471,10 +475,9 @@ To do: test on $n=2$ graphene DOS example.
 
 Future ideas:
 \bi
-\item better benchmarking to break down the 12 $\mu$s
-  CPU time overhead per segment for pole-subtraction
 \item various code speedups: StaticArrays since node-number $p=15$ known and fixed.
 \item only switch on pole-sub when segments sufficiently small; tried via {\tt maxpolesubint=1e-1} but made worse.
+\item improve the 5 $\mu$s CPU time overhead per segment for pole-subtraction?
 \item A explicit subtraction of higher-order poles may improve on the 3rd
   failure method found above.
 \item A Boyd-type solution in the Joukowsky variable rather than the $x$ plane

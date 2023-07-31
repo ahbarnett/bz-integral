@@ -40,7 +40,8 @@ TIME = TimerOutput()
 #Aa = realadap(Hm,ω,η,tol=tol, verb=1)
 #@printf "\trealadap integral Aa = "; println(Aa)
 #TIME(realadap)(Hm,ω,η,tol=tol)
-Al = realadap_lxvm(Hm,ω,η,tol=tol)
+Al = realadap_lxvm(Hm,ω,η,tol=1e-10)   # reference ans
+realadap_lxvm(Hm,ω,η,tol=tol)
 TIME(realadap_lxvm)(Hm,ω,η,tol=tol)    # TimerOutputs no $Hm interpolation :(
 @printf "\trealadap_lxvm ans Al = "; println(Al)
 Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol, verb=1)
