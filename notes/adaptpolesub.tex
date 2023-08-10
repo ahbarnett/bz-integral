@@ -124,6 +124,7 @@ The density of states (DOS) at energy $\om$ is then
 \rho(\om) = -\frac{1}{\pi}\im A(\om,\eta).
 \label{DOS}
 \ee
+% *** not to confuse with ellipse rho!
 % *** Tr and Im commute, but conceptuially shoudl the Tr be outermost?
 The above is the simple case of constant matrix $(\om+i\eta)I$; this
 can be a more general non-Hermitian matrix often denoted by
@@ -175,10 +176,12 @@ I_p := \sum_{j=1}^p w_j f(x_j)
 where $f$ is meromorphic, and $x_j$ and $w_j$ are nodes and weights for $[-1,1]$.
 We take $p$ small, ie, less than 20.
 
-We address only poles of $f$ lying in a Bernstein ellipse of parameter $\rho>0$,
+We address only poles of $f$ lying in a Bernstein ellipse of parameter $\rho>1$,
 recalling that its
-semiaxes are $\cosh\rho$ and $\sinh\rho$.
-Typically $\rho \approx 1.0$ works well.
+semiaxes are $\cosh\log\rho$ and $\sinh\log\rho$,
+i.e., the sum of semiaxes is $\rho$.
+\footnote{Note we misuse the definition of $\rho$ in the code. We should call it {\tt logrho}. To fix.}
+Typically $\rho \approx e^{1.0}$ works well.
 Let all such poles of $f$ be simple (the generic case),
 and let no pole of $f$ coincide with any $x_j$.
 Let $f_j = f(x_j)$ be the given evaluations of the integrand.
@@ -245,7 +248,7 @@ Here are some simple tests for non-rational functions showing successes and fail
   and $\omega=2.0$ controls the density of poles.
   The line of poles is $z_0 + n\pi/\omega$ for $n\in\Z$, and all residues are
   $1/\omega$.
-  Two poles are found in the $\rho=1.0$ Bernstein ellipse and subtracted.
+  Two poles are found in the $\rho=e^{1.0}$ Bernstein ellipse and subtracted.
   The integral $I$ from \eqref{I} is known analytically, and is of order unit sized.
   Using the $p=16$ Gauss--Legendre rule,
   pole-subtraction \eqref{ps} gives an error $|I^\tbox{ps}_p - I| \approx 5.5\times10^{-13}$.
@@ -272,11 +275,11 @@ Here are some simple tests for non-rational functions showing successes and fail
   poles as above, but also interleaved roots. Is it also analytically integrable.
   We change to $\omega=1$, so that
   the nearest root of $f$ is about $-1.27 + i\delta$.
-  With $\rho=0.7$ there is one root $r_1$ of $\tilde g$ found, but its accuracy
+  With $\rho=e^{0.7}$ there is one root $r_1$ of $\tilde g$ found, but its accuracy
   is only $2.4\times 10^{-6}$, and this is reflected by a poor error of
   $|I^\tbox{ps}_p - I| \approx 4\times 10^{-4}$.
 
-  Setting $\rho=1$ encloses the nearest root of $f$ so that a spurious
+  Setting $\rho=e^{1.0}$ encloses the nearest root of $f$ so that a spurious
   ellipse of roots of $g$ is found within the Bernstein ellipse; all $p$ roots
   (the maximum possible for $\tilde g$) are found, an indicator of failure.
   See Fig.~\ref{f:spurious}.
@@ -285,7 +288,7 @@ Here are some simple tests for non-rational functions showing successes and fail
 \item
   A third type of failure is a higher-order pole in $f$.
   We square the original function to $f(x) = 1/\sin^2(\omega(x-z_0))$, also analytically
-  integrable. We return to $\omega=2$, which gives two double-poles in the $\rho=1$
+  integrable. We return to $\omega=2$, which gives two double-poles in the $\rho=e^{1.0}$
   ellipse. For $\delta \ge 10^{-5}$, pole subtraction gives error about $10^{-6}$.
   Each double pole is approximated by a pair of simple poles
   separated by around $10^{-6}$ and with residues of $10^4$
