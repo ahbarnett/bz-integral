@@ -33,9 +33,9 @@ if (verb>0)
     @gp :realmyadap :- real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'roots'"
 end
 @printf "test realmyadap (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
-@printf "\tabs(Am-Al)=%.3g\n" abs(Ap-Al)
+@printf "\tabs(Am-Al)=%.3g\n" abs(Am-Al)
 TIME(realmyadap)(hm,ω,η,tol=tol)    # timing valid since func not passed in :)
-rho0=1.0    # for readquadinv; gets slower either side
+rho0=exp(1.0)    # for readquadinv; gets slower either side
 Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=rho0)
 @printf "test realquadinv (same pars): fevals=%d, nsegs=%d, claimed err=%g\n" numevals length(segs) E
 #@printf "\tAp = "; println(Ap)
@@ -50,12 +50,12 @@ end
 
 
 # examine segs eval'ed (fevals/15) vs chosen segs, use to tweak rho...
-#Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=1.0); abs(Ap-Al), Int(numevals/15), length(segs)
+#Ap, E, segs, numevals = realquadinv(hm,ω,η,tol=tol,rho=exp(1.0)); abs(Ap-Al), Int(numevals/15), length(segs)
 
 #=   debugging rho-filter problem...
 using BenchmarkTools
 BenchmarkTools.DEFAULT_PARAMETERS.seconds=0.1
-ab=[3.0,3.4];   # key region where rho=0.5 caused splitting
+ab=[3.0,3.4];   # key region where rho=exp(0.5) caused splitting
 Aa,E,segs,numevals = realmyadap(hm,ω,η; tol=tol, ab=ab);
 Ar,E,segsr,numevals = realquadinv(hm,ω,η; tol=tol, ab=ab);
 @printf "realmyadap %d segs vs realquadinv %d segs\n" length(segs) length(segsr)

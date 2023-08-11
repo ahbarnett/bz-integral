@@ -163,6 +163,5 @@ function plot!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,T
     y0 = 0.3*(xmax-xmin)     # y range to view
     @gp session :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
 end
-plot(seg::Segment,args...) = plot([seg],args...)       # handle single segment
-plot!(seg::Segment,args...) = plot!([seg],args...)     # "
+plot!(seg::Segment,args...) = plot!([seg],args...)     # handle single segment
 

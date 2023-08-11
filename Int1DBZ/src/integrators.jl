@@ -55,7 +55,7 @@ end
 ########### New methods more specific to reciprocal of analytic function...
 
 """
-    A = realquadinv(hm,ω,η; tol=1e-8, ab=[0.0,2π], verb=0, rho=1.0)
+    A = realquadinv(hm,ω,η; tol=1e-8, ab=[0.0,2π], verb=0, rho=exp(1))
 
     use adaptive pole-subtracting method (adaptquadinv) on Re axis to
     integrate 1/(ω - h(x) + iη), where h(x)
@@ -67,24 +67,24 @@ end
     `verb` greater than 0 gives debug info.
     `rho` is passed to adaptquadinv.
 """
-function realquadinv(hm,ω,η; tol=1e-8, rho=1.0, verb=0, ab=[0.0,2π], rootmeth="PR")
+function realquadinv(hm,ω,η; tol=1e-8, rho=exp(1), verb=0, ab=[0.0,2π], rootmeth="PR")
     # scalar reciprocal of trace of inverse is analytic
     g(x::Number) = 1.0 / tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
     return adaptquadinv(g,ab[1],ab[2], rtol=tol, rho=rho, verb=verb,rootmeth=rootmeth)
 end
 
 
-function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,rho=1.0,verb=0,rootmeth="PR") where T<:Function
+function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,rho=exp(1),verb=0,rootmeth="PR") where T<:Function
 """
     I, E, segs, numevals = adaptquadinv(g, a::Real, b::Real; ...
-                             atol=0.0,rtol=0.0,maxevals=1e7,rho=1.0,verb=0,
+                             atol=0.0,rtol=0.0,maxevals=1e7,rho=exp(1),verb=0,
                              rootmeth="PR")
 
     1D adaptive pole-subtracting Gauss-Kronrod quadrature of 1/g,
     where `g` is a given locally analytic scalar function, over interval
     (a,b). It also handles `g` merely meromorphic.
 
-    'rho' sets the max Bernstein ellipse parameter for dealing with poles.
+    'rho>1' sets the max Bernstein ellipse parameter for dealing with poles.
     As in QuadGK, `atol` has precendence over 'rtol' in setting target
     accuracy, and `maxevals` limits the number of `g` evals.
     `verb`=1 gives debug text output, 2 gives segment-level, 3 pole-sub-level
@@ -144,7 +144,7 @@ function adaptquadinv(g::T,a::Number,b::Number; atol=0.0,rtol=0.0,maxevals=1e7,r
 end
 
 function applypolesub!(gvals::AbstractArray, ginvals::AbstractArray, a::Number,
-                      b::Number, r::gkrule; rho=1.0, verb=0, fac=nothing, rootmeth="PR", maxpolesubint=Inf)
+                      b::Number, r::gkrule; rho=exp(1), verb=0, fac=nothing, rootmeth="PR", maxpolesubint=Inf)
 # pole-correcting version of applygkrule. Changes the input ginvals array.
 # no local g evals; just pass in all vals and reciprocal vals.
 # Barnett 6/30/23

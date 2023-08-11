@@ -31,7 +31,7 @@ xr = BZ_denominator_roots(Hm,ω,η);     # count roots (NEVs)
 @printf "global %d roots (or NEVs) of which %d η-near Re axis.\n" length(xr) sum(abs.(imag.(xr)).<10η)
 
 # for use w/ julia -t1 --track-allocation=user --project=.
-#Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=0.8)
+#Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=exp(0.8))
 #Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol);
 #stop
 
@@ -51,7 +51,7 @@ if (verb>0)          # show adaptivity around poles (roots of denom)
     @gp :realmyadap real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
     plot!(segs,:realmyadap)
 end
-rho0=1.0  #0.8    # for readquadinv; gets slower either side
+rho0=exp(1.0)  #exp(0.8)    # for readquadinv; gets slower either side
 rmeth="PR"
 Ap, E, segs, numevals = realquadinv(Hm,ω,η,tol=tol,rho=rho0,rootmeth=rmeth,verb=1)
 @printf "\tabs(Ap-Al)=%.3g\n" abs(Ap-Al)

@@ -55,10 +55,10 @@ function few_poly_roots(c::Vector{T}, vals::Vector{T}, nodes::Vector,
     return roots, rvals
 end
     
-function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth="PR")
+function find_near_roots(vals::Vector, nodes::Vector; rho=exp(1), fac=nothing, meth="PR")
     """
     roots, derivs = find_near_roots(vals, nodes;
-                                    rho=1.0, fac=nothing, meth="PR")
+                                    rho=exp(1), fac=nothing, meth="PR")
 
     Returns complex-valued roots of unique polynomial approximant g(z)
     matching the vector of `vals` at the vector `nodes`.  The nodes
@@ -67,9 +67,9 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth
     from the interval [-1,1]. It also computes 'derivs', the
     corresponding values of g' at each kept root.
 
-    `rho > 0.0` sets the Bernstein ellipse parameter within which to keep
+    `rho > 1.0` sets the Bernstein ellipse parameter within which to keep
     roots. Recall that the ellipse for the standard segment `[-1,1]` has
-    semiaxes `cosh(rho)` horizontally and `sinh(rho)` vertically.
+    semiaxes `(rho +- 1/rho)/2`.
 
     `fac` allows user to pass in a pre-factorized (eg LU) object for
     the Vandermonde matrix. This accelerates things by 3us for 15 nodes.
@@ -107,10 +107,12 @@ function find_near_roots(vals::Vector, nodes::Vector; rho=1.0, fac=nothing, meth
     #return roots, empty(roots)   # exit for speed test of c-solve + roots only
 
     # now solve roots = (t+1/t)/2 to get t (Joukowsky map) values (1 us)
-    t = @. roots + sqrt(roots^2 - 1.0)
-    rhos = abs.(log.(abs.(t)))        # Bernstein param for each root
-    nkeep = sum(rhos .< rho)          # then keep t with e^-rho < t < e^rho
-    inds = sortperm(rhos)[1:nkeep]    # indices to keep
+    tmag = @. abs(roots + sqrt(roots^2 - 1.0))  # Bernstein params |t| of roots
+    for (j,tm) in enumerate(tmag)               # flip all to |t| >= 1
+        if tm<1.0; tmag[j] = 1.0/tm; end
+    end
+    nkeep = sum(tmag .< rho)          # keep if in Bern ellipse
+    inds = sortperm(tmag)[1:nkeep]    # indices to keep
     roots = roots[inds]
     derivs = zero(roots)              # initialize deriv vals
     derc = Vector{typeof(c[1])}(undef,n-1)    # alloc

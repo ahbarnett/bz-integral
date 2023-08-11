@@ -19,7 +19,7 @@ I, E, segs, numevals = miniquadgk(f,a,b)
 I, E, segs, numevals = miniquadgk(f,a,b,rtol=1e-12)
 @printf "\tminiquadgk(%d fevals) err %.3g, \testim E %.3g\n" numevals I-Ie E
 
-plot(segs,:miniquadgk)   # labeled plot
+plot!(segs,:miniquadgk)   # labeled plot
 
 @printf "perf test vs quadgk in context of real-axis quad of 1/(c+h(x))...\n"
 

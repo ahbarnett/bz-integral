@@ -18,6 +18,7 @@ include("evaluators.jl")
 using DataStructures
 import Base.Order.Reverse
 using Gnuplot
+Gnuplot.options.gpviewer=true    # for vscode
 export Segment, gkrule, applygkrule, applygkrule!, miniquadgk, plot!
 include("miniquadgk.jl")
 

@@ -31,7 +31,7 @@ println("found # roots: ", length(roots))
 # This is my own Newton+deflation, now 2.6 us: (up to 3 near roots)
 @btime find_near_roots($y, $r.x, fac=$fac, meth="F");
 
-if false       # try flamegraph:
+if false       # try flamegraph. Nothing like as useful as vscode flamegraph
     BenchmarkTools.DEFAULT_PARAMETERS.seconds=1.0           # get to 1e4 samps
     @bprofile find_near_roots($y, $r.x, fac=$fac, meth="F");
     using ProfileView    # annoying long precompile; also, not in Project.toml
@@ -42,4 +42,11 @@ if false       # try flamegraph:
     # almost useless since text overlaps :(
 end
 
+if false
+    # from vscode:   need to run a sizeable job (few secs)...
+    @profview for i=1:1000000; find_near_roots(y, r.x, fac=fac, meth="F"); end
+    # but how combine with @bprofile?  dunno
 
+    # view allocs (can't run very long & what's sample_rate??)
+    @profview_allocs for i=1:100; find_near_roots(y, r.x, fac=fac, meth="F"); end sample_rate=1
+end
