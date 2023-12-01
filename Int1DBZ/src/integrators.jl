@@ -10,7 +10,7 @@
 """
 function realadap(hm,ω,η; tol=1e-8, verb=0, kernel=evalh_ref)
     # integrand (quadgk gives x a number; note I is Id if StaticArray matrix)
-    f(x::Number) = tr(inv(complex(ω,η)*I - kernel(hm,x)))
+    f(x::Number) = tr(inv(complex(ω,η)*LinearAlgebra.I - kernel(hm,x)))
     # note how `kernel` lets the evaluator be general
     if verb>0
         A,err,fevals = quadgk_count(f,0,2π,rtol=tol)
@@ -45,7 +45,7 @@ realadap_lxvm(hm, ω, η; tol=1e-8, verb=0) =
 """
 function realmyadap(hm,ω,η; tol=1e-8, ab=[0.0,2π], verb=0)
     # as in realadap, tr is Trace. For scalar: tr(inv(..)) is reciprocal
-    f(x::Number) = tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
+    f(x::Number) = tr(inv(complex(ω,η)*LinearAlgebra.I - fourier_kernel(hm,x)))
     A, E, segs, fevals = miniquadgk(f,ab[1],ab[2],rtol=tol)
     verb>0 && @printf "\trealmyadap:\tfevals=%d, nsegs=%d, claimed err=%.3g\n" fevals length(segs) E
     return A, E, segs, fevals
@@ -69,7 +69,7 @@ end
 """
 function realquadinv(hm,ω,η; tol=1e-8, rho=exp(1), verb=0, ab=[0.0,2π], rootmeth="PR")
     # scalar reciprocal of trace of inverse is analytic
-    g(x::Number) = 1.0 / tr(inv(complex(ω,η)*I - fourier_kernel(hm,x)))
+    g(x::Number) = 1.0 / tr(inv(complex(ω,η)*LinearAlgebra.I - fourier_kernel(hm,x)))
     return adaptquadinv(g,ab[1],ab[2], rtol=tol, rho=rho, verb=verb,rootmeth=rootmeth)
 end
 
