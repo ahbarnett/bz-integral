@@ -12,8 +12,10 @@ z0 = 0.3+1im*d    # sing loc
 zz = -0.5-0.2im    # nearby zero loc
 #f(x::Number) = sin(x-zz)/sin(x-z0)    # zero & pole, not a rat
 #f(x::Number) = (x-zz)/(x-z0)          # (1,1) rat
-zz = NaN
-f(x::Number) = 0.7 + x^2/3 + sqrt(1im*sin((x-z0)/2))  # +1/2 pow sing, cut up
+zz = NaN           # no zero. control freq of sin here...
+#f(x::Number) = 0.7 + x^2/3 + sqrt(1im*sin((x-z0)/2))  # +1/2 pow sing, branch up
+f(x::Number) = 1/(0.7 + x/3 + 1/sqrt(1im*sin((x-z0)/2)))  # -1/2 pow sing, recip
+
 
 r = gkrule()     # GK rule on [-1,1]
 xj = r.x        # the larger node set
@@ -69,6 +71,7 @@ S = svd(V2)
 println("\tm=2: sing vals = ", S.S)
 nullco = S.Vt[end,:]'              # ' = conj transp, needed!
 cop = nullco[1:p2+1]; coq = nullco[p2+2:2p2+2]; cor = nullco[2p2+3:end]
+#cor, cop = cop, cor              # flip equiv to m=-2, failed
 function psi(z::Number)     # approximant, psi, two branches (uses coeffs)
     q = evalpoly(z,coq)
     r = evalpoly(z,cor)
