@@ -1,0 +1,179 @@
+\documentclass[11pt]{article}
+
+\textwidth 6.5in
+\oddsidemargin=0in
+\evensidemargin=0in
+\textheight 9in
+\topmargin -0.5in
+
+\usepackage{graphicx,bm,amssymb,amsmath,amsthm}
+\usepackage{hyperref}
+
+%\usepackage{showlabels}
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\ben}{\begin{enumerate}}
+\newcommand{\een}{\end{enumerate}}
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}} 
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\ba}{\begin{align}} 
+\newcommand{\ea}{\end{align}}
+\newcommand{\bse}{\begin{subequations}} 
+\newcommand{\ese}{\end{subequations}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\bfi}{\begin{figure}}
+\newcommand{\efi}{\end{figure}}
+\newcommand{\ca}[2]{\caption{#1 \label{#2}}}
+\newcommand{\ig}[2]{\includegraphics[#1]{#2}}
+\newcommand{\tbox}[1]{{\mbox{\tiny #1}}}
+\newcommand{\mbf}[1]{{\mathbf #1}}
+\newcommand{\half}{\mbox{\small $\frac{1}{2}$}}
+\newcommand{\vt}[2]{\left[\begin{array}{r}#1\\#2\end{array}\right]} % 2-col-vec
+\newcommand{\mt}[4]{\left[\begin{array}{rr}#1&#2\\#3&#4\end{array}\right]} % 2x2
+\newcommand{\eps}{\varepsilon}
+\newcommand{\bigO}{{\mathcal O}}
+\newcommand{\sfrac}[2]{\mbox{\small $\frac{#1}{#2}$}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\DeclareMathOperator{\re}{Re}
+\DeclareMathOperator{\im}{Im}
+\DeclareMathOperator{\tr}{Tr}
+\DeclareMathOperator{\res}{res}
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{alg}[thm]{Algorithm}
+\newtheorem{pro}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{rmk}[thm]{Remark}
+\newtheorem{conj}[thm]{Conjecture}
+% this work...
+\newcommand{\om}{\omega}
+\newcommand{\tH}{\tilde H}
+\newcommand{\BZ}{\Omega}
+\newcommand{\kk}{\mbf{k}}
+
+
+\begin{document}
+\title{Summary of analytically known tight-binding density of states test cases}
+\author{Alex Barnett}
+\date{\today}
+\maketitle
+\begin{abstract}
+  We collect known density of states formulae for use as validation
+  of numerical Brillouin zone integration methods, and in understanding
+  the types of complex-plane singularities that occur.
+\end{abstract}
+
+Consider a crystalline quantum system with band Hamiltonian $H(k)$,
+with wavevector $\kk\in \BZ := [0,2\pi)^d$, where the dimension $d=1$, $2$, or $3$.
+We are handed a band Hamiltonian function in the form of a finite Fourier
+series labelled by an integer $m := (m_1,\dots,m_d)$,
+\be
+H(k) = \sum_{m\in{\cal M}} H_m e^{im\cdot \kk}
+\label{Hk}
+\ee
+where $\cal M := \{(m_1,\dots,m_d): |m_i|\le M\}$ is an array of 
+$(2M+1)^d$ frequency indices.
+$H$ and each $H_m$ are matrices of size $n$.
+$H(\kk)$ is self-adjoint for all $\kk\in\R^d$,
+equivalent to the symmetry $H_m^* = H_{-m}$ for all $m$, where
+$^*$ indicates the complex transpose (Hermitian conjugate).
+
+We stick to the paradigm self-energy term $\Sigma = iI\eta$
+with broadening parameter $\eta\in\R$.
+In this case, $\eta$ can be viewed as the imaginary part of
+a complex energy $\om = \om_0 + i\eta$ in the closed upper half plane.
+Given $M$, $\{H_m\}$ as above, energy $\om_0$, and $\eta\ge0$,
+the quantity to compute is
+\be
+G(\om) = G(\om_0,\eta) \;:=\;
+\int_\BZ \tr\, [\om I - H(\kk)]^{-1} d\kk,
+\label{G}
+\ee
+which is sometimes called the Green's function.
+We are interested in analytic formulae for $G(\om)$ to
+test numerical methods, and to understand
+its singularities for $\om$ in the closed upper half plane.
+
+The density of states (DOS) at energy $\om_0$ and broadening $\eta$ is then
+\be
+A(\om_0) := -\frac{1}{\pi}\im G(\om_0,\eta),
+\label{DOS}
+\ee
+which is thus no longer analytic with respect to $\om=\om_0+i\eta$ in the upper half plane.
+
+\section{Scalar linear chain, square, and simple cubic lattices}
+
+Here $n=1$ (a scalar case). We take fixed
+nearest-neighbor tight binding interactions (of $1/2$) which become
+the coefficients at frequencies $\pm 1$ in each dimension.
+Some have a factor of 2 or $2t$ in the definition (for interaction strength $1$ or $t$) relative to the below.
+These results are adapted from \cite[Ch.~5]{economou}
+and various papers of the 1970s.
+
+
+\bfi % ffffffffffffffffffff
+\centering
+\ig{width=3.5in}{zpaths}    % or use zpaths_jl.png
+\ca{Paths of the two roots $z_\pm$ in Section~\ref{s:1d} as
+  $\om$ passes along a constant-imaginary-part
+  path from very roughly $-2+0.1i$ to $2+0.1i$.}{f:zpaths}
+\efi
+
+\subsection{$d=1$ linear chain}
+\label{s:1d}
+
+We use $x$ for $\kk$ since it is scalar. Thus $H(x) = \cos x$ and
+\bea
+G(\om) &=& \int_0^{2\pi} \frac{dx}{\om - \cos x}
+= 2i \int_{|z|=1} \frac{dz}{z^2-2\om z + 1}
+= 2i \int_{|z|=1} \frac{dz}{(z-z_+)(z-z_-)},
+\nonumber
+\eea
+where we changed variable $z = e^{ix}$ so $dz/z = i\,dx$.
+The denominator roots are $z_\pm = \om\pm i\sqrt{1-\om^2}$, where
+the sign of the discriminant has been flipped in order to allow
+the usual branch cut and square-root definition to apply.
+Thus for $\im \om > 0$ the sign of $\im z_\pm$
+matches the subscript of $z_\pm$.
+Figure~\ref{f:zpaths} shows the resulting paths of $z_\pm$ as $\re \om$
+varies at constant $\im \om$.
+For $\im \om \ge 0$ then only $z_-$ is inside the unit circle, so
+the residue is $2i/(z_--z_+) = -1/\sqrt{1-\om^2}$, so, by
+the residue theorem,
+\[
+G(\om) \;=\; \frac{2\pi}{i \sqrt{1-\om^2}}.
+\]
+Considering $\om$ real ($\eta=0^+$),
+$G$ is pure negative real for $\om<-1$ (below the band),
+pure negative imaginary for $\om \in (-1,1)$ (in the band),
+then pure positive real for $\om>1$ (above the band).
+See \cite[Fig.~5.6]{economou}.
+From \eqref{DOS} the DOS is $A(\om) = 2/\sqrt{1-\om^2}$ in the band and zero
+outside the band.
+For $\im \om$ small and positive (broadening),
+the phase of $G(\om)$ rotates rapidly from real to imaginary as
+$\re\om$ increases through $-1$, and vice versa at $1$.
+The magnitude peak is roughly $\sqrt{2/\eta}$.
+For $|\om|\gg 1$, $G \sim 2\pi/\om$ decays as if from
+a single pole (which the two inverse-sqrt singularities combine to
+behave like at large distances).
+
+
+\subsection{$d=2$ square lattice}
+\label{s:2d}
+
+
+
+
+
+\bibliographystyle{abbrv}
+\bibliography{refs}
+
+\end{document}

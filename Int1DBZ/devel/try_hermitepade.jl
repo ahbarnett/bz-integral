@@ -1,9 +1,12 @@
-# try Hermite-Pade on std interval for fitting rational or
-# inv-sqrt singular functions.  Based on fit_invsqrt.jl
+# try Hermite-Pade (really: quadratic Pade of Shafer '74, working with
+# function values on std interval, as in robust Pade of Gonnet et al '13),
+# for fitting rational or inv-sqrt singular functions.
+# Based on fit_invsqrt.jl
 # Barnett 12/1/23
 using Int1DBZ
 using GLMakie
 using LinearAlgebra
+using FastGaussQuadrature
 verb=1
 
 d = 1e-2         # imag dist of sing
@@ -14,12 +17,11 @@ zz = -0.5-0.2im    # nearby zero loc
 #f(x::Number) = (x-zz)/(x-z0)          # (1,1) rat
 zz = NaN           # no zero. control freq of sin here...
 #f(x::Number) = 0.7 + x^2/3 + sqrt(1im*sin((x-z0)/2))  # +1/2 pow sing, branch up
-f(x::Number) = 1/(0.7 + x/3 + 1/sqrt(1im*sin((x-z0)/2)))  # -1/2 pow sing, recip
+f(x::Number) = 0.7 + x/3 + 1/sqrt(1im*sin((x-z0)/2))  # -1/2 pow sing, recip
 
-
-r = gkrule()     # GK rule on [-1,1]
-xj = r.x        # the larger node set
-N = length(xj)
+r = gkrule(); xj = r.x; N=length(xj)    # all of GK rule on [-1,1]
+#N = 15; xj = [cos(pi*j/(N-1)) for j in 0:N]
+#N=15; xj,~ = gausslegendre(N)
 fj = f.(xj)    # data
 t = range(-1.0,1.0,1000)     # for cont curve plot & max estim on [-1,1]
 ft = f.(t)                   # true vals on dense grid on [-1,1]
@@ -55,7 +57,7 @@ fat = [evalpoly(x,co) for x in t]          # f's approximant on t grid
 println("\tpoly(",p,") fit f: max resid = ",norm(fat .- ft,Inf))
 # fails when nearby sing, obvi
 
-p1 = 6      # degree of p and q. Do Gonnet-Güttel-Trefethen '13 fit via SVD
+p1 = N÷2-1     # degree of p and q. Do Gonnet-Güttel-Trefethen '13 fit via SVD
 V1 = V[:,1:p1+1]; V1 = [V1 diagm(fj)*V1]
 S = svd(V1)
 println("\tm=1: sing vals = ", S.S)
@@ -65,7 +67,7 @@ fat1 = [-evalpoly(x,cop)/evalpoly(x,coq) for x in t]  # grid eval rat -p/q
 println("\trat(",p1,",",p1,") fit f: max resid = ",norm(fat1 .- ft,Inf))
 # good for nearby pole with nearby zero
 
-p2 = 4      # degree of p,q,r. Do Fasondini '18 Hermite-Pade fit via SVD
+p2 = N÷3-1      # degree of p,q,r. Do Fasondini '18 Hermite-Pade fit via SVD
 V2 = V[:,1:p2+1]; V2 = [V2 diagm(fj)*V2 diagm(fj.^2)*V2]
 S = svd(V2)
 println("\tm=2: sing vals = ", S.S)
@@ -82,8 +84,9 @@ end
 fat2 = [psi(x)[ abs(psi(x)[1]-f(x))<abs(psi(x)[2]-f(x)) ? 1 : 2 ] for x in t] # best branch
 println("\trat(",p2,",",p2,",",p2,") fit f: max resid = ",norm(fat2 .- ft,Inf))
 Dj = [evalpoly(x,coq)^2-4*evalpoly(x,cor)*evalpoly(x,cop) for x in xj]
-za = find_near_roots(Dj, xj, rho=exp(1.0), meth="PR")
-println(za)
+za,Dpza = find_near_roots(Dj, xj, rho=exp(1.0), meth="PR")
+# the derivs Dpza all small at fake root pairs (doublets)
+println("\tfirst root of D: ",za[1], ".  dist from true sing: ",abs(za[1]-z0))
 if verb>0                    # plot error of f approximant in C-plane           
     fige=Figure();
     fag1 = [-evalpoly(z,cop)/evalpoly(z,coq) for z in zg]  # 2d grid eval -p/q
