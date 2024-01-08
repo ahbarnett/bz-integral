@@ -57,6 +57,7 @@
 \newcommand{\tH}{\tilde H}
 \newcommand{\BZ}{\Omega}
 \newcommand{\kk}{\mbf{k}}
+\newcommand{\mm}{\mbf{m}}
 
 
 \begin{document}
@@ -70,50 +71,61 @@
   the types of complex-plane singularities that occur.
 \end{abstract}
 
-Consider a crystalline quantum system with band Hamiltonian $H(k)$,
+Consider a crystalline quantum system with band Hamiltonian $H(\kk)$,
 with wavevector $\kk\in \BZ := [0,2\pi)^d$, where the dimension $d=1$, $2$, or $3$.
 We are handed a band Hamiltonian function in the form of a finite Fourier
-series labelled by an integer $m := (m_1,\dots,m_d)$,
+series labelled by an integer frequency $\mm := (m_1,\dots,m_d)$,
 \be
-H(k) = \sum_{m\in{\cal M}} H_m e^{im\cdot \kk}
+H(k) = \sum_{\mm\in{\cal M}} H_m e^{i\mm\cdot \kk}
 \label{Hk}
 \ee
-where $\cal M := \{(m_1,\dots,m_d): |m_i|\le M\}$ is an array of 
-$(2M+1)^d$ frequency indices.
-$H$ and each $H_m$ are matrices of size $n$.
+where ${\cal M} := \{(m_1,\dots,m_d): |m_i|\le M\}$ is the array of 
+$(2M+1)^d$ frequency indices centered about the origin.
+$H$, and each $H_\mm$, is an $n\times n$ matrix.
 $H(\kk)$ is self-adjoint for all $\kk\in\R^d$,
-equivalent to the symmetry $H_m^* = H_{-m}$ for all $m$, where
+equivalent to the symmetry $H_\mm^* = H_{-\mm}$ for all $\mm\in\Z^d$, where
 $^*$ indicates the complex transpose (Hermitian conjugate).
 
 We stick to the paradigm self-energy term $\Sigma = iI\eta$
 with broadening parameter $\eta\in\R$.
 In this case, $\eta$ can be viewed as the imaginary part of
 a complex energy $\om = \om_0 + i\eta$ in the closed upper half plane.
-Given $M$, $\{H_m\}$ as above, energy $\om_0$, and $\eta\ge0$,
-the quantity to compute is
+Given the matrix-valued function $H(\kk)$
+described by Fourier coefficients $\{H_\mm\}$ up to frequency magnitude $M$,
+energy $\om_0$, and $\eta\ge0$,
+the quantity (``Green's function'') to compute is
 \be
-G(\om) = G(\om_0,\eta) \;:=\;
-\int_\BZ \tr\, [\om I - H(\kk)]^{-1} d\kk,
+G(\om) \;:=\;
+\int_\BZ \tr\, [\om I - H(\kk)]^{-1} d\kk.
 \label{G}
 \ee
-which is sometimes called the Green's function.
-We are interested in analytic formulae for $G(\om)$ to
-test numerical methods, and to understand
-its singularities for $\om$ in the closed upper half plane.
+This is a scalar function, analytic in the open upper half plane,
+which follows since eigenvalues of $H(\kk)$ can only be real, and by
+using that the integral of analytic functions is analytic (via Morera's theorem).
+% *** lemma proving this would be good
+For $\eta=0$ the limit $\eta=0^+$ is assumed.
 
-The density of states (DOS) at energy $\om_0$ and broadening $\eta$ is then
+We are interested in closed forms for $G(\om)$, to
+test numerical methods and to understand
+its singularities for $\om$ in the closed upper half plane.
+The density of states (DOS) is then
 \be
-A(\om_0) := -\frac{1}{\pi}\im G(\om_0,\eta),
+A(\om_0,\eta) := -\frac{1}{\pi}\im G(\om_0+i\eta),
 \label{DOS}
 \ee
-which is thus no longer analytic with respect to $\om=\om_0+i\eta$ in the upper half plane.
+which is thus harmonic, but no longer analytic, with respect to $\om=\om_0+i\eta$ in the upper half plane.
+$A$ is usually sought as a function of energy $\om_0$,
+fixing some broadening $\eta\ge0$.
+
 
 \section{Scalar linear chain, square, and simple cubic lattices}
 
 Here $n=1$ (a scalar case). We take fixed
-nearest-neighbor tight binding interactions (of $1/2$) which become
+nearest-neighbor tight binding interactions (of strength $1/2$), which become
 the coefficients at frequencies $\pm 1$ in each dimension.
-Some have a factor of 2 or $2t$ in the definition (for interaction strength $1$ or $t$) relative to the below.
+Thus $M=1$ is sufficient.
+Some literature has
+a factor of 2 or $2t$ in the definition (for interaction strength $1$ or $t$) relative to the below.
 These results are adapted from \cite[Ch.~5]{economou}
 and various papers of the 1970s.
 
@@ -123,13 +135,16 @@ and various papers of the 1970s.
 \ig{width=3.5in}{zpaths}    % or use zpaths_jl.png
 \ca{Paths of the two roots $z_\pm$ in Section~\ref{s:1d} as
   $\om$ passes along a constant-imaginary-part
-  path from very roughly $-2+0.1i$ to $2+0.1i$.}{f:zpaths}
+  path, passing from very roughly $-2+0.1i$ to $2+0.1i$.}{f:zpaths}
 \efi
 
 \subsection{$d=1$ linear chain}
 \label{s:1d}
 
-We use $x$ for $\kk$ since it is scalar. Thus $H(x) = \cos x$ and
+We use $x$ for $\kk$ since it is scalar.
+The nonzero coefficients are $H_{\pm 1} = 1/2$,
+thus $H(x) = \cos x$,
+so \eqref{G} becomes
 \bea
 G(\om) &=& \int_0^{2\pi} \frac{dx}{\om - \cos x}
 = 2i \int_{|z|=1} \frac{dz}{z^2-2\om z + 1}
@@ -158,9 +173,10 @@ See \cite[Fig.~5.6]{economou}.
 From \eqref{DOS} the DOS is $A(\om) = 2/\sqrt{1-\om^2}$ in the band and zero
 outside the band.
 For $\im \om$ small and positive (broadening),
-the phase of $G(\om)$ rotates rapidly from real to imaginary as
-$\re\om$ increases through $-1$, and vice versa at $1$.
-The magnitude peak is roughly $\sqrt{2/\eta}$.
+the phase of $G(\om)$ rotates rapidly from negative real to negative imaginary as
+$\re\om$ increases through $-1$, then continues to rotate to positive real
+around $1$.
+Here the peak magnitudes are roughly $\sqrt{2/\eta}$.
 For $|\om|\gg 1$, $G \sim 2\pi/\om$ decays as if from
 a single pole (which the two inverse-sqrt singularities combine to
 behave like at large distances).

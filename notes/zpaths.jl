@@ -5,7 +5,7 @@ function zr(om::Number)        # pair of roots via quadratic formula
     [om+im*s; om-im*s]
 end
 eta=0.1; om=range(-2+eta*im,2+eta*im,length=100)
-r = stack(zr.(om))
+r = stack(zr.(om))        # convert Vector of Vectors to Matrix (v>=1.9)
 fig,ax,h = scatter(real.(r[1,:]),imag.(r[1,:]),marker='o',color=real.(om),label="z+")
 scatter!(real.(r[2,:]),imag.(r[2,:]),marker='x',color=real.(om),label="z-")
 t=range(0,2pi,length=100); lines!(cos.(t), sin.(t))
