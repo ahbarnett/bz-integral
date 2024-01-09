@@ -1,0 +1,101 @@
+CAN'T DO:
+
+In[46]:= Assuming[{Re[w]>0,Im[w]>0}, Integrate[1/Sqrt[1-(w-Cos[x])^2], {x,0,Pi}]]                                   
+
+                              1
+Out[46]= Integrate[-----------------------, {x, 0, Pi}]
+                                        2
+                   Sqrt[1 - (w - Cos[x]) ]
+
+
+
+
+
+
+........ BELOW WRONG UPPER LIM (Pi/2):
+
+In[31]:= Assuming[{w>0, w<1}, Integrate[1/Sqrt[1-(w-Cos[x])^2], {x,0,Pi/2}]]                                        
+
+                                                     2
+                                         2 + w      w
+         (-2 I) EllipticF[I ArcSinh[Sqrt[-----]], -------]
+                                           w            2
+                                                  -4 + w
+Out[31]= -------------------------------------------------
+                                     2
+                           Sqrt[4 - w ]
+
+
+
+
+In[30]:= Integrate[1/Sqrt[1-(w-Cos[x])^2], {x,0,Pi/2}]                                                              
+
+                                                                                    1
+                                                I Sqrt[-2 - w] Sqrt[w] ArcSinh[-----------]
+                                                                                      w
+                                                                               Sqrt[-----]      2
+                                                                                    2 + w      w
+                               (-2 I) EllipticF[-------------------------------------------, -------]
+                                                            Sqrt[-(w (2 + w))]                     2
+                                                                                             -4 + w
+Out[30]= ConditionalExpression[----------------------------------------------------------------------, 
+                                                                2             1
+                                                  Sqrt[2 + w - w ] Sqrt[1 + -----]
+                                                                            1 + w
+ 
+          2
+>    Im[w]  >= (-2 + Re[w]) Re[w] && (Re[ArcCos[-1 + w]] < 0 || 2 Re[ArcCos[-1 + w]] > Pi || 
+ 
+>       ArcCos[-1 + w] ∉ Reals)]
+
+
+
+UHP try =================================================================================================
+
+
+In[32]:= Assuming[Re[w]>0, Integrate[1/Sqrt[1-(w-Cos[x])^2], {x,0,Pi/2}]]                                           
+
+                                                                                    1
+                                                I Sqrt[-2 - w] Sqrt[w] ArcSinh[-----------]
+                                                                                      w
+                                                                               Sqrt[-----]      2
+                                                                                    2 + w      w
+                               (-2 I) EllipticF[-------------------------------------------, -------]
+                                                            Sqrt[-(w (2 + w))]                     2
+                                                                                             -4 + w
+Out[32]= ConditionalExpression[----------------------------------------------------------------------, 
+                                                                2             1
+                                                  Sqrt[2 + w - w ] Sqrt[1 + -----]
+                                                                            1 + w
+ 
+                 2               2
+>    4 Re[w] >= w  + Conjugate[w]  && (Re[ArcCos[-1 + w]] < 0 || 2 Re[ArcCos[-1 + w]] > Pi || 
+ 
+>       ArcCos[-1 + w] ∉ Reals) && (Sqrt[-2 + w] Sqrt[w] <= 0 || w <= 2)]
+
+
+Here, EllipticF(phi,m) is integral from 0 to phi of dt/sqrt(1 - m sin^2 t)
+
+
+
+
+=========== restrict to 1st quadrant for w:
+
+In[34]:= Assuming[{Re[w]>0,Im[w]>0}, Integrate[1/Sqrt[1-(w-Cos[x])^2], {x,0,Pi/2}]]                                 
+
+                                                                                                        2
+                                                 1              1                           2 + w      w
+                               (-2 I) Sqrt[1 + ------] Sqrt[1 + -] EllipticF[I ArcSinh[Sqrt[-----]], -------]
+                                               -2 + w           w                             w            2
+                                                                                                     -4 + w
+Out[34]= ConditionalExpression[------------------------------------------------------------------------------, 
+                                                               2 + w            2
+                                                          Sqrt[-----] Sqrt[1 - w ]
+                                                                 w
+ 
+          2                                            2
+>    Im[w]  >= (-2 + Re[w]) Re[w] && 1 + Sqrt[1 + Im[w] ] >= Re[w]]
+
+
+Annoying that I appears.
+Re[w]>2 did not change the formula, but removed the conditions.
