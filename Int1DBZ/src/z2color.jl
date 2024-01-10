@@ -20,6 +20,6 @@ function z2color(z::Number)
         # HSL also has a kink at L=0.5, bad. Revert to my old z2rgb code... 
         x = real(z)/m; y = imag(z)/m
     end
-    w = 1.22*(0.5-abs(L-0.5));  # see z2rgb_kawski; note has kink like L
+    w = 1.22*(0.5-abs(L-0.5));  # see z2rgb_kawski; note has kink like L, seems minor
     RGB(L+w*(-y/sqrt(6)+x/sqrt(2)), L+w*(-y/sqrt(6)-x/sqrt(2)), L+w*y*sqrt(2/3))
 end

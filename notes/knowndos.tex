@@ -58,15 +58,18 @@
 \newcommand{\BZ}{\Omega}
 \newcommand{\kk}{\mbf{k}}
 \newcommand{\mm}{\mbf{m}}
+\newcommand{\al}{\alpha}
+\newcommand{\bt}{\beta}
 
 
 \begin{document}
-\title{Summary of analytically known tight-binding density of states test cases}
+\title{Some tight-binding Greens functions with known formulae}
 \author{Alex Barnett}
 \date{\today}
 \maketitle
 \begin{abstract}
-  We collect known density of states formulae for use as validation
+  We collect known Greens functions (hence density of states)
+  formulae for use as validation
   of numerical Brillouin zone integration methods, and in understanding
   the types of complex-plane singularities that occur.
 \end{abstract}
@@ -127,7 +130,10 @@ Thus $M=1$ is sufficient.
 Some literature has
 a factor of 2 or $2t$ in the definition (for interaction strength $1$ or $t$) relative to the below.
 These results are adapted from \cite[Ch.~5]{economou}
-and various papers of the 1970s.
+and various Japanese papers of the 1970s, which consider $\om$ real.
+In contrast, we treat $\om$ as a complex number in the closed
+upper half plane.
+We use $G_d(\om)$ for \eqref{G} in dimension $d$.
 
 
 \bfi % ffffffffffffffffffff
@@ -137,7 +143,7 @@ and various papers of the 1970s.
 \ca{Left: Paths of the two roots $z_\pm$ in Section~\ref{s:1d} as
   $\om$ passes along a constant-imaginary-part
   path, passing from very roughly $-2+0.1i$ to $2+0.1i$.
-  Right: color plot of complex-valued $G(\om)$ in the upper half plane
+  Right: color plot of complex-valued $G_1(\om)$ in the upper half plane
   (pink has phase zero and yellow has phase $-\pi/2$).
 }{f:1d}
 \efi
@@ -150,10 +156,10 @@ The nonzero coefficients are $H_{\pm 1} = 1/2$,
 thus $H(x) = \cos x$,
 so \eqref{G} becomes
 \bea
-G(\om) &=& \int_0^{2\pi} \frac{dx}{\om - \cos x}
+G_1(\om) &=& \int_0^{2\pi} \frac{dx}{\om - \cos x}
 = 2i \int_{|z|=1} \frac{dz}{z^2-2\om z + 1}
 = 2i \int_{|z|=1} \frac{dz}{(z-z_+)(z-z_-)},
-\nonumber
+\label{G1def}
 \eea
 where we changed variable $z = e^{ix}$ so $dz/z = i\,dx$.
 The denominator roots are $z_\pm = \om\pm i\sqrt{1-\om^2}$, where
@@ -166,22 +172,23 @@ varies at constant $\im \om$.
 For $\im \om \ge 0$ then only $z_-$ is inside the unit circle, so
 the residue is $2i/(z_--z_+) = -1/\sqrt{1-\om^2}$, so, by
 the residue theorem,
-\[
-G(\om) \;=\; \frac{2\pi}{i \sqrt{1-\om^2}}.
-\]
+\be
+G_1(\om) \;=\; \frac{2\pi}{i \sqrt{1-\om^2}}.
+\label{G1}
+\ee
 Considering $\om$ real ($\eta=0^+$),
-$G$ is pure negative real for $\om<-1$ (below the band),
+$G_1$ is pure negative real for $\om<-1$ (below the band),
 pure negative imaginary for $\om \in (-1,1)$ (in the band),
 then pure positive real for $\om>1$ (above the band).
 See \cite[Fig.~5.6]{economou}.
 From \eqref{DOS} the DOS is $A(\om) = 2/\sqrt{1-\om^2}$ in the band and zero
 outside the band.
 For $\im \om$ small and positive (broadening),
-the phase of $G(\om)$ rotates rapidly from negative real to negative imaginary as
+the phase of $G_1(\om)$ rotates rapidly from negative real to negative imaginary as
 $\re\om$ increases through $-1$, then continues to rotate to positive real
 around $1$.
 Here the peak magnitudes are roughly $\sqrt{2/\eta}$.
-For $|\om|\gg 1$, $G \sim 2\pi/\om$ decays as if from
+For $|\om|\gg 1$, $G_1 \sim 2\pi/\om$ decays as if from
 a single pole (which the two inverse-sqrt singularities combine to
 behave like at large distances). See Fig.~\ref{f:1d}(b).
 
@@ -189,9 +196,89 @@ behave like at large distances). See Fig.~\ref{f:1d}(b).
 \subsection{$d=2$ square lattice}
 \label{s:2d}
 
-We write $\kk=(x,y)$, and have $H(x,y) = \cos x + \cos y$.
+We write $\kk=(x,y)$, and have $H(x,y) = \cos x + \cos y$. The band edges
+are thus $\om = \pm 2$.
+Economou's approach (clearer than that of Morita 1971) uses the trick that
+$H$ is separable when rotated by $\pi/4$; this allows reuse of the $d=1$
+case except with a coupling depending on the other variable.
+We apply the cosine sum formula with $\al = (x+y)/2$,
+$\bt = (x-y)/2$, and use $dx\,dy = 2 d\al\,d\bt$, with domain
+$(\al,\bt) \in [0,2\pi)\times[0,\pi)$ which covers $\Omega$ exactly once,
+to get
+\be
+G_2(\om) = \int_0^{2\pi} \int_0^{2\pi} \frac{dx\,dy}{\om - (\cos x + \cos y)}
+=
+2 \int_0^{\pi} \left[ \int_0^{2\pi} \frac{d\al}{\om - 2\cos\bt\cos\al} \right]
+d\bt.
+\ee
+Writing $\om=(2\cos\bt)\om'$, the inner integral in square brackets
+is, reusing \eqref{G1def}--\eqref{G1},
+\[
+\frac{1}{2\cos\bt}G_1(\om') = 
+\frac{1}{2\cos\bt}G_1(\om/2\cos\bt) =
+\frac{2\pi}{i}\frac{1}{\sqrt{4\cos^2\bt - \om^2}},
+\]
+which is analytic in the upper half plane for $\om$.
 
+Consider real $\om>2$ (taking the limit $\im \om = 0^+$).
+This limit approaches the sqrt cut from below, so that
+$\sqrt{4\cos^2\bt - \om^2} = -i\sqrt{\om^2 - 4\cos^2\bt}$, and
+setting $k=2/\om$, we get
+\be
+G_2(\om) = 2 \frac{2\pi}{i} \int_0^{\pi} \frac{d\bt}{-i \om \sqrt{1-k^2\cos^2\bt}}
+= \frac{8\pi}{\om}K(2/\om),
+\label{G2re}
+\ee
+which is real for $\om>2$.
+Here the complete elliptic integral is defined for ``modulus'' $k$ by
+\be
+K(k) := \int_0^{\pi/2} \frac{d\theta}{\sqrt{1-k^2\sin^2 \theta}},
+\qquad k\in\C, \; k\neq \pm 1,
+\label{ellipk}
+\ee
+although some definitions and software use $m=k^2$ as the argument.
+$K$ has log singularities at $k=\pm 1$, while $K(0) = \pi/2$
+means that $G_2 \sim 4\pi^2/\om$ for $\om\gg 1$.
+Now, for $\om<-2$, the sqrt cut is approached from above,
+but the sign of $\om$ accounts for this, so \eqref{G2re} also holds.
+Since $K(-k) = K(k)$, we see $G$ is antisymmetric for real $\om\notin[-2,2]$.
+The DOS $A$
+vanishes for real $\om$ outside the band $[-2,2]$, by the reality of $G_2$.
 
+The standard branch cut of $K$ is $k\in(-\infty,-1)\cup (1,\infty)$,
+following from the standard
+branch cut for sqrt in \eqref{ellipk}.
+%Along this branch only $\im K$ jumps.
+Thus $K$ is analytic for $k$ in the open lower half plane,
+equivalent to $\om = 2/k$ in the open upper half plane.
+By unique continuation from the real axis outside $[-2,2]$,
+\eqref{G2re} holds for all $\im \om >0$.
+
+Finally we tackle the limit of $\om$ approaching $(-2,2)$ from above.
+We use the Legendre connection formula (DLMF, 19.7.3)
+\be
+K(1/k) = k\big( K(k) - iK(k') \big)
+\label{Kconn}
+\ee
+where $k'=\sqrt{1-k^2}$ is the complementary modulus, and now set $k=\om/2$
+(the reciprocal of before),
+with the imaginary sign taken for $\im k^2 > 0$, appropriate
+for $\om$ in the first quadrant.
+Thus
+\[
+G_2(\om) = 4\pi \bigl[ K(\om/2) -i K(\sqrt{1-(\om/2)^2}) \bigr],
+\qquad \om \in (0,2),
+\]
+showing the split into real and imaginary parts.
+Here $A_2(\om_0,0) = 4K(\sqrt{1-(\om_0/2)^2})$,
+and the DOS drops from a left-sided limit of $2\pi$ to $0$ at $\om_0=2$.
+At $\om=0$ there is a log singularity, causing a log blow-up
+in $A_2$ at the origin (associated with the flat band structure
+around the saddle point $x=y=0$ with $H=0$).
+The limit for $\om \in (-2,0)$ flips the sign for the imaginary part in 
+\eqref{Kconn}.
+
+*** however DOS has to be positive, check sign in this last case.
 
 
 \bibliographystyle{abbrv}
