@@ -34,4 +34,11 @@ export realadap, realadap_lxvm, realmyadap, applypolesub!, adaptquadinv
 export realquadinv
 include("integrators.jl")
 
+# other utils
+using Colors
+include("z2color.jl")
+export z2color
+include("ellipk.jl")
+export ellipkAGM
+
 end # module Int1DBZ
