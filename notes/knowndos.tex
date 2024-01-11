@@ -309,43 +309,55 @@ branch cut for sqrt in \eqref{ellipk}.
 %Along this branch only $\im K$ jumps.
 Thus $K$ is analytic for $k$ in the open lower half plane,
 equivalent to $\om = 2/k$ in the open upper half plane.
-By unique continuation from the real axis outside $[-2,2]$,
+By unique continuation in $\om$ from the real axis outside $[-2,2]$,
 \eqref{G2re} holds for all $\im \om >0$.
 
-Finally we tackle the limit of $\om$ approaching $(-2,2)$ from above.
-
-There are Legendre connection formulae (DLMF, 19.7.3) such as
+Finally we discuss the limit of $\om$ approaching $(0,2)$ from above.
+$\re G_2$ is positive while $\im G_2$ is negative.
+There is a log singularity (showing as blow-up in $\im G_2$)
+as $w\to 0$.
+To see this, we use a Legendre connection formula (DLMF, 19.7.3),
 \be
-K(1/k) = k\big( K(k) - iK(k') \big)
+K(1/k) = k\big( K(k) - iK(k') \big),
 \label{Kconn}
 \ee
-where $k'=\sqrt{1-k^2}$ is the complementary modulus, which
-applies only for $k$ in the 1st quadrant. (There are
+where $k'=\sqrt{1-k^2}$ is the complementary modulus; the signs
+are correct only for $k$ in the 1st quadrant. (There are
 sign changes of both terms in the other three quadrants,
-with the $\re k < 0$ cases omitted from DLMF.)
-
-
-and now set $k=\om/2$
-(the reciprocal of before),
-with the imaginary sign taken for $\im k^2 > 0$, appropriate
+with the $\re k < 0$ cases omitted from DLMF; a correction has been
+submitted.)
+We now set $k=\om/2$ (the reciprocal of before),
+with the imaginary sign in \eqref{Kconn} taken for $\im k^2 > 0$, appropriate
 for $\om$ in the first quadrant.
 Thus
 \[
 G_2(\om) = 4\pi \bigl[ K(\om/2) -i K(\sqrt{1-(\om/2)^2}) \bigr],
 \qquad \om \in (0,2),
 \]
+% Check... (where KA is my 
+%julia> om=Complex(0.7)
+%0.7 + 0.0im
+%julia> 2/om*KA(2/om)
+%1.6225281033750703 - 2.4830141152030314im
+%julia> KA(om/2)-1im*K(sqrt(1-(om/2)^2))
+%1.6225281033750705 - 2.483014115203032im
 showing the split into real and imaginary parts.
-Here $A_2(\om_0,0) = 4K(\sqrt{1-(\om_0/2)^2})$,
-and the DOS drops from a left-sided limit of $2\pi$ to $0$ at $\om_0=2$.
+In this upper part of the band, $A_2(\om_0,0) = 4K(\sqrt{1-(\om_0/2)^2})$,
+and the DOS jumps from a left-sided limit of $2\pi$ to $0$ at
+the upper band edge $\om_0=2$.
 At $\om=0$ there is a log singularity, causing a log blow-up
 in $A_2$ at the origin (associated with the flat band structure
 around the saddle point $x=y=0$ with $H=0$).
-The limit for $\om \in (-2,0)$ flips the sign for the imaginary part in 
-\eqref{Kconn}.
+For $\om \in (-2,0)$ only the sign of real part of $G_2$ is flipped;
+we skip the discussion of signs here, but they follow by analytic
+continuation.
+See the resulting Fig.~\ref{f:2d}(b) which matches \cite[Fig.~5.7]{economou}.
+Because $\im G_2$ is negative, the DOS is positive, across the band $(-2,2)$.
 
-See Fig.~\ref{f:2d}(b) which matches \cite[Fig.~5.7]{economou}.
-Because $\im G_2$ is negative, the DOS is positive across the band $(-2,2)$.
-
+Numerically \eqref{Kconn} is not needed, since we have a code for
+$K(k)$ throughout $\C$ including the correct real axis limits
+(here the signed zero in the imaginary part is used to decide
+the side of the branch).
 
 For numerical testing by partial integration we apply quadrature to
 \be
