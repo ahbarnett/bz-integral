@@ -43,13 +43,13 @@ const gwd7 = [1.2948496616886969327061143267787e-01,
               4.1795918367346938775510204081658e-01]
 
 
-struct gkrule
-    """
+"""
     gkrule: a Gauss-Kronrod rule for (-1,1).
     `x` is all 2n+1 nodes, `w` is all 2n+1 weights for Kronrod rule,
     'gw' is n weights for Gauss rule.
     Since n small, not worth desymmetrizing. Simplicity wins.
-    """
+"""
+struct gkrule
     x::Vector{Float64}
     w::Vector{Float64}
     gw::Vector{Float64}
@@ -74,7 +74,6 @@ function applygkrule!(fvals::AbstractArray,f::T,a::Float64,b::Float64,r::gkrule)
     return applygkrule(fvals,a,b,r)
 end
 
-function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
 """
     seg = applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     
@@ -83,6 +82,7 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     containing `a` and `b` endpoints, `I` integral estimate, `E` error
     estimate, and `npoles` number of poles subtracted (0 for plain GK).
 """
+function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     # Barnett 6/30/23 tidying up applyrule!
     n = length(r.gw)
     Ik = Ig = zero(fvals[1])   # 0 of type of els of fwrk
@@ -99,7 +99,6 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     return Segment(a,b,Ik,E,0)   # 0 is npoles, means plain GK
 end
 
-function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
 """
     I, E, segs, numevals = miniquadgk(f,a::Real,b::Real;...
                                       atol=0.0,rtol=0.0,maxevals=1e7)
@@ -109,6 +108,7 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
     Based on QuadGK, using same segment heap, but easy to understand/modify.
     Specific to Float or Complex scalar function f, for now.
 """
+function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
     if atol==0.0          # simpler logic than QuadGK. atol has precedence
         if rtol>0.0
             @assert rtol >= 1e-16
@@ -143,11 +143,14 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
     return I, E, segs, numevals
 end
 
-
-# --------- plotting segments ---------------------------------------------
-# (this includes segment color-coding for non-miniquadgk methods)
+"""
+    plot!(segs, session=:default) uses Gnuplot.jl to add a Segment or
+    vector of such to the given gnuplot session (or start session if did not
+    exist).
+    Segment is a type from miniquadgk.
+    Color-coding via npoles is used (a field only used outside miniquadgk).
+"""
 function plot!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
-    # add to current plot in given session, or start that session & plot
     a = [s.a for s in segs]
     b = [s.b for s in segs]
     i = [s.npoles==0 for s in segs]     # inds of std GK segs
