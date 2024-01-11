@@ -29,6 +29,8 @@
 \newcommand{\efi}{\end{figure}}
 \newcommand{\ca}[2]{\caption{#1 \label{#2}}}
 \newcommand{\ig}[2]{\includegraphics[#1]{#2}}
+\newcommand{\bmp}[1]{\begin{minipage}{#1}}
+\newcommand{\emp}{\end{minipage}}
 \newcommand{\tbox}[1]{{\mbox{\tiny #1}}}
 \newcommand{\mbf}[1]{{\mathbf #1}}
 \newcommand{\half}{\mbox{\small $\frac{1}{2}$}}
@@ -72,6 +74,7 @@
   formulae for use as validation
   of numerical Brillouin zone integration methods, and in understanding
   the types of complex-plane singularities that occur.
+  Issues of branch cuts and their handling in IEEE-754 arithmetic are discussed.
 \end{abstract}
 
 Consider a crystalline quantum system with band Hamiltonian $H(\kk)$,
@@ -129,22 +132,43 @@ the coefficients at frequencies $\pm 1$ in each dimension.
 Thus $M=1$ is sufficient.
 Some literature has
 a factor of 2 or $2t$ in the definition (for interaction strength $1$ or $t$) relative to the below.
+We use $G_d(\om)$ for \eqref{G} for tight-binding on $\Z^d$.
 These results are adapted from \cite[Ch.~5]{economou}
 and various Japanese papers of the 1970s, which consider $\om$ real.
 In contrast, we treat $\om$ as a complex number in the closed
 upper half plane.
-We use $G_d(\om)$ for \eqref{G} in dimension $d$.
+
+\begin{rmk}
+Care is needed due to branch cuts.
+Eg, in each case, $G$ will depend only on $\om^2$, which would naively
+suggest that $G(-\om) = G(\om)$, an even function with inversion
+symmetry through $\om=0$. However, if the limit of $\om$ approaching real
+from the UHP is taken, $G$ is not always even for real $\om$,
+because the UHP limit may correspond to different sides of a branch cut in the $\om^2$ plane.
+Care is also needed due to IEEE-754's use of signed zero to indicate
+which side of a branch cut, eg, for zsqrt the signed zero of imaginary part
+is used.
+\end{rmk}
 
 
 \bfi % ffffffffffffffffffff
-(a)\ig{width=2.8in}{zpaths}    % or use zpaths_jl.png
-%\hfill
-(b)\ig{width=3.2in}{1dband_cplane}
-\ca{Left: Paths of the two roots $z_\pm$ in Section~\ref{s:1d} as
+\bmp{3in}
+(a)\raisebox{-1in}{\ig{width=3in}{zpaths}}    % or use zpaths_jl.png
+\\
+(b)\raisebox{-1.5in}{\ig{width=3in}{1dband_cplane}}
+\emp
+\bmp{3.4in}
+\mbox{}\hspace{10ex}(c)\\
+\ig{width=3.4in}{1dband_real}
+\emp
+\vspace{-5ex}
+\ca{(a) Paths of the two roots $z_\pm$ in Section~\ref{s:1d} as
   $\om$ passes along a constant-imaginary-part
   path, passing from very roughly $-2+0.1i$ to $2+0.1i$.
-  Right: color plot of complex-valued $G_1(\om)$ in the upper half plane
+  (b) color plot of complex-valued $G_1(\om)$ in the upper half plane
   (pink has phase zero and yellow has phase $-\pi/2$).
+  (c) real and imaginary parts of $G_1$ for $\om\in\R$ using the limit
+  of $\im \om = 0^+$.
 }{f:1d}
 \efi
 
@@ -180,9 +204,16 @@ Considering $\om$ real ($\eta=0^+$),
 $G_1$ is pure negative real for $\om<-1$ (below the band),
 pure negative imaginary for $\om \in (-1,1)$ (in the band),
 then pure positive real for $\om>1$ (above the band).
-See \cite[Fig.~5.6]{economou}.
+See Fig.~\ref{f:1d}(c) which matches \cite[Fig.~5.6]{economou}.
+Because of the sign flip across the branch cut of sqrt,
+$G_1(-\om) = -G_1(\om)$ for $\om\in R$.
+IEEE-754 complex arithmetic applied to \eqref{G1} in fact gets
+all three regions correct for $\om$ real, due to the use of signed zero in the
+imaginary part, and that $(a+i0)^2 = a^2-i0$ for $a<0$ real
+(eg, see Kahan's famous 1985 paper).
 From \eqref{DOS} the DOS is $A(\om) = 2/\sqrt{1-\om^2}$ in the band and zero
 outside the band.
+
 For $\im \om$ small and positive (broadening),
 the phase of $G_1(\om)$ rotates rapidly from negative real to negative imaginary as
 $\re\om$ increases through $-1$, then continues to rotate to positive real
@@ -191,6 +222,27 @@ Here the peak magnitudes are roughly $\sqrt{2/\eta}$.
 For $|\om|\gg 1$, $G_1 \sim 2\pi/\om$ decays as if from
 a single pole (which the two inverse-sqrt singularities combine to
 behave like at large distances). See Fig.~\ref{f:1d}(b).
+
+
+
+\bfi % ffffffffffffffffffff
+\bmp{3in}
+(a)
+\\
+\ig{width=3in}{2dband_cplane}
+\emp
+\bmp{3.4in}
+(b)
+\\
+\ig{width=3.4in}{2dband_real}
+\emp
+\vspace{-2ex}
+\ca{(a) color plot of complex-valued $G_2(\om)$ in the upper half plane
+  (pink has phase zero and yellow has phase $-\pi/2$).
+  (b) real and imaginary parts of $G_2$ for $\om\in\R$ using the limit
+  of $\im \om = 0^+$.
+}{f:2d}
+\efi
 
 
 \subsection{$d=2$ square lattice}
@@ -219,6 +271,11 @@ is, reusing \eqref{G1def}--\eqref{G1},
 \frac{2\pi}{i}\frac{1}{\sqrt{4\cos^2\bt - \om^2}},
 \]
 which is analytic in the upper half plane for $\om$.
+This integrand depends only on $\om^2$, so it, and hence
+$G_2(\om)$ is inversion symmetric in most of the complex plane.
+However, taking the UHP limit then $G_2(-\om) = -G_2(\om)$
+for $\om\in\R$, ie, it appears antisymmetric on the real axis
+(since the other side of the cut of sqrt is approached).
 
 Consider real $\om>2$ (taking the limit $\im \om = 0^+$).
 This limit approaches the sqrt cut from below, so that
@@ -236,7 +293,8 @@ K(k) := \int_0^{\pi/2} \frac{d\theta}{\sqrt{1-k^2\sin^2 \theta}},
 \qquad k\in\C, \; k\neq \pm 1,
 \label{ellipk}
 \ee
-although some definitions and software use $m=k^2$ as the argument.
+although some definitions and software use $m=k^2$ as the argument
+(which is simpler).
 $K$ has log singularities at $k=\pm 1$, while $K(0) = \pi/2$
 means that $G_2 \sim 4\pi^2/\om$ for $\om\gg 1$.
 Now, for $\om<-2$, the sqrt cut is approached from above,
@@ -255,12 +313,19 @@ By unique continuation from the real axis outside $[-2,2]$,
 \eqref{G2re} holds for all $\im \om >0$.
 
 Finally we tackle the limit of $\om$ approaching $(-2,2)$ from above.
-We use the Legendre connection formula (DLMF, 19.7.3)
+
+There are Legendre connection formulae (DLMF, 19.7.3) such as
 \be
 K(1/k) = k\big( K(k) - iK(k') \big)
 \label{Kconn}
 \ee
-where $k'=\sqrt{1-k^2}$ is the complementary modulus, and now set $k=\om/2$
+where $k'=\sqrt{1-k^2}$ is the complementary modulus, which
+applies only for $k$ in the 1st quadrant. (There are
+sign changes of both terms in the other three quadrants,
+with the $\re k < 0$ cases omitted from DLMF.)
+
+
+and now set $k=\om/2$
 (the reciprocal of before),
 with the imaginary sign taken for $\im k^2 > 0$, appropriate
 for $\om$ in the first quadrant.
@@ -278,7 +343,16 @@ around the saddle point $x=y=0$ with $H=0$).
 The limit for $\om \in (-2,0)$ flips the sign for the imaginary part in 
 \eqref{Kconn}.
 
-*** however DOS has to be positive, check sign in this last case.
+See Fig.~\ref{f:2d}(b) which matches \cite[Fig.~5.7]{economou}.
+Because $\im G_2$ is negative, the DOS is positive across the band $(-2,2)$.
+
+
+For numerical testing by partial integration we apply quadrature to
+\be
+G_2(\om) = \int_{0}^{2\pi} G_1(\om - \cos y) dy,
+\ee
+which adds a real sinusoidal shift to the energy $\om$ in \eqref{G1},
+thus $\om$ remains in the UHP for all $y$ values above.
 
 
 \bibliographystyle{abbrv}
