@@ -19,7 +19,7 @@ using DataStructures
 import Base.Order.Reverse
 using Gnuplot
 Gnuplot.options.gpviewer=true    # for vscode; see https://discourse.julialang.org/t/gnuplot-from-vscode-no-plot/65458/4
-export Segment, gkrule, applygkrule, applygkrule!, miniquadgk, plot!
+export Segment, gkrule, applygkrule, applygkrule!, miniquadgk, plotsegs!
 include("miniquadgk.jl")
 
 using PolynomialRoots     # low-order faster roots

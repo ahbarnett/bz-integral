@@ -49,7 +49,7 @@ Am, E, segs, numevals = realmyadap(Hm,ω,η,tol=tol, verb=1)
 TIME(realmyadap)(Hm,ω,η,tol=tol)    # (timing valid since func not passed in :)
 if (verb>0)          # show adaptivity around poles (roots of denom)
     @gp :realmyadap real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
-    plot!(segs,:realmyadap)
+    plotsegs!(segs,:realmyadap)
 end
 rho0=exp(1.0)  #exp(0.8)    # for readquadinv; gets slower either side
 rmeth="PR"
@@ -59,7 +59,7 @@ TIME(realquadinv)(Hm,ω,η,tol=tol,rho=rho0,rootmeth=rmeth)
 print_timer(TIME, sortby=:firstexec)   # otherwise randomizes order!
 if (verb>0)
     @gp :realquadinv real(xr) imag(xr) "w p pt 2 lc rgb 'red' t 'poles'"
-    plot!(segs,:realquadinv)
+    plotsegs!(segs,:realquadinv)
 end
 #Gnuplot.quitall()
 

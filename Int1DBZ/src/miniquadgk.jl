@@ -101,20 +101,16 @@ end
 
 """
     I, E, segs, numevals = miniquadgk(f,a::Real,b::Real;...
-                                      atol=0.0,rtol=0.0,maxevals=1e7)
+                                      atol=0.0,rtol=1e-6,maxevals=1e7)
 
     Simple implementation of 1D adaptive Gauss-Kronrod quadrature of function
     f over (a,b). `atol` has precendence over 'rtol' in setting target accuracy.
     Based on QuadGK, using same segment heap, but easy to understand/modify.
     Specific to Float or Complex scalar function f, for now.
 """
-function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
+function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=1e-6,maxevals=1e7)
     if atol==0.0          # simpler logic than QuadGK. atol has precedence
-        if rtol>0.0
-            @assert rtol >= 1e-16
-        else
-            rtol = 1e-6   # default
-        end
+        @assert rtol >= 1e-16
     end        
     r = gkrule()       # make a default panel rule
     n = length(r.gw)   # num embedded Gauss nodes, overall "order" n
@@ -144,27 +140,30 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=0.0,maxevals=1e7)
 end
 
 """
-    plot!(segs, session=:default) uses Gnuplot.jl to add a Segment or
+    plotsegs!(segs, session=:default) uses Gnuplot.jl to add a Segment or
     vector of such to the given gnuplot session (or start session if did not
     exist).
     Segment is a type from miniquadgk.
     Color-coding via npoles is used (a field only used outside miniquadgk).
 """
-function plot!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
+function plotsegs!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
     a = [s.a for s in segs]
     b = [s.b for s in segs]
     i = [s.npoles==0 for s in segs]     # inds of std GK segs
     ab = [a[i] b[i]]
-    @gp session :- real(ab) imag(ab) "w lp pt 1 lc rgb '#000000' tit 'GK segs'"
+    gpsesh = Gnuplot.options.default
+    Gnuplot.options.default=session  # see https://github.com/gcalderone/Gnuplot.jl/issues/63
+    @gp :- real(ab) imag(ab) "w lp pt 1 lc rgb '#000000' tit 'GK segs'"
     i = [s.npoles>0 for s in segs]     # pole-sub segs
     if sum(i)>0
         ab = [a[i] b[i]]
-        @gp session :- real(ab) imag(ab) "w lp pt 1 lc rgb '#00ff00' tit 'pole-sub'"
+        @gp :- real(ab) imag(ab) "w lp pt 1 lc rgb '#00ff00' tit 'pole-sub'"
     end
     xmax = maximum([a;b])
     xmin = minimum([a;b])
     y0 = 0.3*(xmax-xmin)     # y range to view
-    @gp session :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
+    @gp :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
+    Gnuplot.options.default=gpsesh        # restore prev session
 end
-plot!(seg::Segment,args...) = plot!([seg],args...)     # handle single segment
+plotsegs!(seg::Segment,args...) = plotsegs!([seg],args...)  # handle single segment
 
