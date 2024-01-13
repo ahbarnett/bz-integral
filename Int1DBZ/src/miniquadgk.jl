@@ -95,7 +95,7 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     sca = (b-a)/2
     Ik *= sca
     Ig *= sca
-    E = abs(Ig-Ik)
+    E = maximum(abs.(Ig-Ik))
     return Segment(a,b,Ik,E,0)   # 0 is npoles, means plain GK
 end
 
@@ -124,7 +124,7 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=1e-6,maxevals=1e7)
     segs = applygkrule(fvals,a,b,r)      # kick off adapt via eval mother seg
     I, E = segs.I, segs.E          # keep global estimates which get updated
     segs = [segs]                  # heap needs to be Vector
-    while E>atol && E>rtol*abs(I) && numevals<maxevals
+    while E>atol && E>rtol*maximum(abs.(I)) && numevals<maxevals
         s = heappop!(segs, Reverse)            # get worst seg
         split = (s.b+s.a)/2
         s1 = applygkrule!(fvals,f,s.a,split,r)   # fvals is workspace (no alloc)
@@ -164,6 +164,7 @@ function plotsegs!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,
     y0 = 0.3*(xmax-xmin)     # y range to view
     @gp :- "set size ratio -1" xrange=[xmin,xmax] yrange=[-y0,y0]
     Gnuplot.options.default=gpsesh        # restore prev session
+    nothing
 end
 plotsegs!(seg::Segment,args...) = plotsegs!([seg],args...)  # handle single segment
 
