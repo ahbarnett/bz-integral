@@ -95,7 +95,7 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     sca = (b-a)/2
     Ik *= sca
     Ig *= sca
-    E = maximum(abs.(Ig-Ik))
+    E = maximum(abs.(Ig-Ik))     # allows I to be Vector
     return Segment(a,b,Ik,E,0)   # 0 is npoles, means plain GK
 end
 
@@ -108,7 +108,7 @@ end
     Based on QuadGK, using same segment heap, but easy to understand/modify.
     Specific to Float or Complex scalar function f, for now.
 """
-function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=1e-6,maxevals=1e7)
+function miniquadgk(f,a::Float64,b::Float64; atol=0.0,rtol=1e-6,maxevals=1e7)
     if atol==0.0          # simpler logic than QuadGK. atol has precedence
         @assert rtol >= 1e-16
     end        
@@ -124,7 +124,7 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=1e-6,maxevals=1e7)
     segs = applygkrule(fvals,a,b,r)      # kick off adapt via eval mother seg
     I, E = segs.I, segs.E          # keep global estimates which get updated
     segs = [segs]                  # heap needs to be Vector
-    while E>atol && E>rtol*maximum(abs.(I)) && numevals<maxevals
+    while E>atol && E>rtol*maximum(abs.(I)) && numevals<maxevals   # I maybe vec
         s = heappop!(segs, Reverse)            # get worst seg
         split = (s.b+s.a)/2
         s1 = applygkrule!(fvals,f,s.a,split,r)   # fvals is workspace (no alloc)
@@ -138,6 +138,7 @@ function miniquadgk(f,a::Real,b::Real; atol=0.0,rtol=1e-6,maxevals=1e7)
     # to do *** resum as SGJ?
     return I, E, segs, numevals
 end
+miniquadgk(f,a::Number,b::Number;kwargs...) = miniquadgk(f,Float64(a),Float64(b);kwargs...) 
 
 """
     plotsegs!(segs, session=:default) uses Gnuplot.jl to add a Segment or
