@@ -42,7 +42,7 @@ References:
 * App. B of: D. Malhotra and A. H. Barnett, https://arxiv.org/abs/2310.00889
 """
 function genchebquad(fs::Function, a, b, tol=1e-10; verb=0)
-    # Version also returning diagnostic outputs. verbosity verb=0,1,...
+    # Now also returns diagnostic output struct. verbosity verb=0,1,...
     I,E,segs,numeval = miniquadgk(fs,Float64(a),Float64(b); atol=tol, rtol=tol)
     sort!(segs; lt = (s,t) -> s.a<t.a)        # reorder segs along real axis
     Nf = length(I)     # how many funcs

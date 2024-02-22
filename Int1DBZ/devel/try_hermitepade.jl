@@ -21,8 +21,9 @@ f(x::Number) = 0.7 + x/3 + 1/sqrt(1im*sin((x-z0)/2))  # -1/2 pow sing, recip
 
 r = gkrule(); xj = r.x; N=length(xj)    # all of GK rule on [-1,1]
 #N = 15; xj = [cos(pi*j/(N-1)) for j in 0:N]
-#N=15; xj,~ = gausslegendre(N)
+#N=20; xj,~ = gausslegendre(N)       # gets 11 digits :)
 fj = f.(xj)    # data
+#fj .+= 1e-6*rand(length(fj))  #
 t = range(-1.0,1.0,1000)     # for cont curve plot & max estim on [-1,1]
 ft = f.(t)                   # true vals on dense grid on [-1,1]
 if verb>0                    # two-panel plot of f on interval & C-plane
@@ -96,7 +97,7 @@ if verb>0                    # plot error of f approximant in C-plane
     scatter!(real.(z0),imag.(z0), label="sing", marker='*')
     isnan(zz) || scatter!(real.(zz),imag.(zz), label="zero")
     Colorbar(fige[1,2],he, label="abs m=1 (rat) error")
-    fag2 = [psi(z)[1] for z in zg]  # 2d grid eval psi, one branch
+    fag2 = [psi(z)[2] for z in zg]  # 2d grid eval psi, one branch
     axe,he=heatmap(fige[2,1],gx,gy,abs.(fag2.-fg), axis=(aspect=DataAspect(),))
     he.colorrange=10.0.^[-15,0]; he.colormap=:jet; he.colorscale=log10;
     scatter!(real.(xj),imag.(xj), label=L"x_j", color=:black, markersize=5)

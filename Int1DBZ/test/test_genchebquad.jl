@@ -17,7 +17,7 @@ function testquadfuncset(x::Vector, w::Vector, fs::Function,a,b,reqtol)
 end
 
 tol=1e-12
-for case = 0:2     # ---------------------------------- loop over func set choices
+for case = 0:3     # ---------------------------------- loop over func set choices
 
 if case==0; println("Trivial test on monomials...")
     a=-1.0; b=1.0
@@ -28,27 +28,39 @@ elseif case==1; println("Basic test on non-integer power set...")
     # *** note: fails for min r<-0.6. not sure why - try arb prec?
 elseif case==2; println("poly plus nearby complex sqrt times poly...")
     a=-1.0; b=1.0
-    p=20            # max degree
+    p=20                  # max degree
     z0 = 0.3 + 1e-3im;    # sing loc near (a,b)
-    #z0 = -1.001   # or, keeping it real, and sqrt away from its cut :)
+    #z0 = -1.001          # or, keeping it real, and sqrt away from its cut :)
     #fs(x::Number) = [[x^k for k=0:p]; [real(x^k/sqrt(x-z0)) for k=0:p];
     #    [imag(x^k/sqrt(x-z0)) for k=0:p]]        # separate Re, Im parts
     # neater way but ordering interleaved...    
     #fs(x::Number) = reduce(vcat, x^k.*[1, real(1/sqrt(x-z0)), imag(1/sqrt(x-z0))] for k=0:p)
     # even neater way using splat from tuple to Vector...
     fs(x::Number) = reduce(vcat, x^k.*[1, reim(1/sqrt(x-z0))...] for k=0:p)
+elseif case==3; println("poly plus log|x-x0| times poly (x0 in interval)...")
+    a=-1.0; b=1.0; p=20   # max degree
+    x0 = 0.57;            # sing loc in (a,b)
+    fs(x::Number) = reduce(vcat, x^k.*[1, log(abs(x-x0))] for k=0:p)
 end
 
-x, w, i = genchebquad(fs,a,b,tol;verb=1)
+@time x, w, i = genchebquad(fs,a,b,tol;verb=1)
 Ierrs = testquadfuncset(x,w,fs,a,b,tol)        # check the rule
 
+# some test-cases outside the class... each time, fp must be deriv of f
 if case!=1
-    f(x) = sin(1+3x); fp(x) = 3*cos(1+3x)   # fp must be deriv of f
+    f(x) = sin(1+3x); fp(x) = 3cos(1+3x)
     @printf "analytic test x,w err: %.3g\n" abs(sum(w.*fp.(x))-f(b)+f(a))
 end
 if case==2
-    f(x) = sqrt(x-z0); fp(x) = 0.5/sqrt(x-z0)
+    #f(x) = sqrt(x-z0); fp(x) = 0.5/sqrt(x-z0)
+    f(x) = sin(1+3x)*sqrt(x-z0); fp(x) = 0.5/sqrt(x-z0)*(sin(1+3x)+6(x-z0)*cos(1+3x))
     @printf "anal times 1/sqrt test x,w err: %.3g\n" abs(sum(w.*fp.(x))-f(b)+f(a))
+end
+if case==3
+    #f(x) = (x-x0)*log(abs(x-x0)); fp(x) = 1 + log(abs(x-x0))   # too easy
+    # note sinc is sin(pi.x)/(pi.x) in Julia...
+    f(x) = sin(3*(x-x0))*log(abs(x-x0)); fp(x) = 3cos(3(x-x0))*log(abs(x-x0)) + 3sinc(3(x-x0)/pi)
+    @printf "anal + log|x-x0|.anal test x,w err: %.3g\n" abs(sum(w.*fp.(x))-f(b)+f(a))
 end
 
 if true              # plot stuff from info struct i
