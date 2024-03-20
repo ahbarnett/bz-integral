@@ -2,7 +2,7 @@ module Int1DBZ
 """
 Int1DBZ: 1D Brillouin zone integration, comparing a variety of methods.
 
-A H Barnett, June 2023. Based off simpler subset of Cont1DBZ, QuadGK
+A H Barnett. started June 2023, based off simpler subset of Cont1DBZ, QuadGK
 """
 
 # stuff all included code lumps need
@@ -29,6 +29,9 @@ using NonlinearEigenproblems   # n>1 matrix case, NEP and PEP solvers
 using LinearAlgebra
 export find_near_roots, BZ_denominator_roots, roots_companion, few_poly_roots
 include("complex.jl")
+export qpade_sqrtsings     # middle integral (2D case, moving beyond 1D BZ)
+export genchebquad
+include("genchebquad.jl")
 
 using QuadGK         # SGJ Pkg
 export realadap, realadap_lxvm, realmyadap, applypolesub!, adaptquadinv

@@ -77,10 +77,12 @@ end
 """
     seg = applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     
-    Use `fvals` as function values at the nodes `r.x` to apply plain
-    Gauss-Kronrod quadrature on interval (a,b). Returns `Segment` object
-    containing `a` and `b` endpoints, `I` integral estimate, `E` error
-    estimate, and `npoles` number of poles subtracted (0 for plain GK).
+Apply Gauss-Kronrod quadrature using `fvals` as function values for the interval (a,b).
+The struct `r` must contain a valid set of GK nodes and weights for the
+standard interval [-1,1].
+Returns a `Segment` object
+containing `a` and `b` endpoints, `I` integral estimate, `E` error
+estimate, and `npoles=0` (no poles subtracted since plain GK).
 """
 function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     # Barnett 6/30/23 tidying up applyrule!
@@ -170,7 +172,7 @@ plotsegs!(seg::Segment,args...) = plotsegs!([seg],args...)  # handle single segm
 
 """
     showsegs!(segs) adds a Segment or
-    vector of such to the given Makie plot.
+    vector of such to the current Makie axes.
     Segment is a type from miniquadgk.
     Color-coding via npoles is used (a field only used outside miniquadgk).
 """

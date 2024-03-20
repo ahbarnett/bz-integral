@@ -188,3 +188,32 @@ function roots_companion(a::AbstractVector{<:Number})
     complex(eigvals!(C))    # overwrite C, and we don't want the vectors
 end
 # Note re fact that we don't need evecs: see also LinearAlgebra.LAPACK.geev!
+
+"""
+    sings, dsingsdz = qpade_sqrtsings(vals, nodes; rho=exp(1))
+
+Use quadratic Pade approximant on the vector of values `vals` at the vector
+of complex `nodes` to find square-root singularities lying in the Bernstein
+rho-ellipse for [-1,1]. The nodes are assumed to be well-chosen for
+interpolation on [-1,1].
+`dsingsdz` are corresponding z-derivs of discriminant at the roots
+(if small, indicates fake root pair, etc).
+
+The QPade representation comes from Shafer '74; however, the fitting
+process is as in "robust" Pade of Gonnet et al '13.
+"""
+function qpade_sqrtsings(vals::Vector, nodes::Vector; rho=exp(1))
+    N = length(nodes)
+    k = N÷3-1      # degree of p,q,r  (called p2 in try_hermitepade of Dec'23)
+    V = [x^i for x in nodes, i in 0:k]    # Vandermonde
+    VVV = [V diagm(vals)*V diagm(vals.^2)*V]     # stack as in Fasondini '18
+    S = svd(VVV)
+    #println("\tQPade: sing vals = ", S.S)
+    nullco = S.Vt[end,:]'              # ' = conj transp, needed!
+    # extract coeffs matching col-blocks of VVV...
+    cop = nullco[1:k+1]; coq = nullco[k+2:2k+2]; cor = nullco[2k+3:end]
+    # eval discriminant (degree 2k poly) at nodes, to find its near roots...
+    Dj = [evalpoly(x,coq)^2 - 4*evalpoly(x,cor)*evalpoly(x,cop) for x in nodes]
+    sings,dsingsdz = find_near_roots(Dj, nodes, rho=rho, meth="PR")
+    sings,dsingsdz    # use d/dz v small to indicate spurious?
+end
