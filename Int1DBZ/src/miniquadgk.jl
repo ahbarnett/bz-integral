@@ -143,8 +143,7 @@ miniquadgk(f,a::Number,b::Number;kwargs...) = miniquadgk(f,Float64(a),Float64(b)
 """
     plotsegs!(segs, session=:default) uses Gnuplot.jl to add a Segment or
     vector of such to the given gnuplot session (or start session if did not
-    exist).
-    Segment is a type from miniquadgk.
+    exist). Segment is a type from miniquadgk.
     Color-coding via npoles is used (a field only used outside miniquadgk).
 """
 function plotsegs!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
@@ -168,4 +167,19 @@ function plotsegs!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,
     nothing
 end
 plotsegs!(seg::Segment,args...) = plotsegs!([seg],args...)  # handle single segment
+
+"""
+    showsegs!(segs) adds a Segment or
+    vector of such to the given Makie plot.
+    Segment is a type from miniquadgk.
+    Color-coding via npoles is used (a field only used outside miniquadgk).
+"""
+function showsegs!(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
+    for s in segs
+        ab = [s.a,s.b]
+        c = (s.npoles==0) ? :black : :red
+        scatterlines!(real(ab), imag(ab), markersize=10, marker='+', color=c)
+    end
+end
+showsegs!(seg::Segment,args...) = showsegs!([seg],args...)  # handle single segment
 

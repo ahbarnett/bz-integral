@@ -2,14 +2,14 @@
 # Barnett 2/22/24, restart post-Bonaire 3/20/24
 using Int1DBZ
 using Printf
-using GLMakie
+using CairoMakie
 include("../src/genchebquad.jl")
 
 # integrand f and answer I:  2D tight-binding case 
 om = 0.6      # overall energy
 eta = 1e-2    # broadening (think of as imag part of om)
 G1(om) = 2pi/(1im*sqrt(1-om^2))    # x-integral done, 1D tight-binding model
-f(y) = G1(om + 1im*eta - cos(y))   # integrand for middle integral
+f(y) = G1(om + 1im*eta - cos(y))   # integrand for middle integral (NOT FOR TIMING)
 K(k) = Int1DBZ.ellipkAGM(k)               # local code for complete elliptic integral
 G2(om) = 4pi*(K(om/2) - 1im*K(sqrt(1-(om/2)^2)))     # 2D TB model
 Ie = G2(om + 1im*eta)                 # analytic (exact) answer
@@ -19,6 +19,9 @@ Ie = G2(om + 1im*eta)                 # analytic (exact) answer
 Ia,E,segs,nev = miniquadgk(f,0,2pi,rtol=1e-10)
 @printf "exact:\tIe = %.12g + %.12gi\n" real(Ie) imag(Ie)
 @printf "adap:\tIa = %.12g + %.12gi\t (relerr=%.3g, esterr=%.3g, nsegs=%d, nev=%d)\n" real(Ia) imag(Ia) abs(Ia-Ie)/abs(Ie) E length(segs) nev
+fig = Figure(); ax=Axis(fig[1,1],title="segs")
+showsegs!(segs)
+display(fig)
 
 # test by-hand composite quad, uniform segments over [0,2pi)
 ns = 100
