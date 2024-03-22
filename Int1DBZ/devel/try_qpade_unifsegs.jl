@@ -84,7 +84,7 @@ end
 atol = 1e-8
 Ia, Ea, sa, neva = adaptquadsqrt(f,0.0,2pi,atol=atol,verb=1)
 nsqrt = sum([s.nsqrtsings>0 for s in sa])
-@printf "a-QPade:Ia = %.12g + %.12gi\t (relerr=%.3g, esterr=%.3g, nsegs=%d (nsqrt=%d), nev=%d)\n" real(Ia) imag(Ia) abs(Ia-Ie)/abs(Ie) Ea length(sa) nsqrt neva
+@printf "a-QPade:Ia = %.12g + %.12gi\t (relerr=%.3g, esterr=%.3g, nsegs=%d [nsqrt=%d], nev=%d)\n" real(Ia) imag(Ia) abs(Ia-Ie)/abs(Ie) Ea length(sa) nsqrt neva
 ax=Axis(fig[2,1],title="adap QPade+GCQ: special segs shown green")
 showsegs!(sa)
 display(fig);
