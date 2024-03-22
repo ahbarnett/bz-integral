@@ -1,13 +1,13 @@
-# try combining quadratic pade with GCQ for auto-sqrt handling on 1 seg
-# Barnett 2/22/24, restart post-Bonaire 3/20/24
+# try combining quadratic pade with GCQ for auto-sqrt handling on 1 seg.
+# Then, uniform segs, then fully adaptive test.
+# Barnett 2/22/24, restart post-Bonaire 3/20/24.
 using Int1DBZ
 using Printf
 using CairoMakie
-#include("../src/genchebquad.jl")
 
-# integrand f and answer I:  2D tight-binding case 
-om = 1.999      # overall energy (need Re om >= 0 for correct sign on Re G right now)
-eta = 1e-8   # broadening (think of as imag part of om)
+# integrand f and answer I:  2D tight-binding case (om=2 band edge; log-sings 0, 2)
+om = 0.7      # overall energy (need Re om >= 0 for correct sign on Re G... why?)
+eta = 1e-5   # broadening (think of as imag part of om)
 G1(om) = 2pi/(1im*sqrt(1-om^2))    # x-integral done, 1D tight-binding model
 f(y) = G1(om + 1im*eta - cos(y))   # integrand for middle integral (NOT FOR TIMING)
 K(k) = Int1DBZ.ellipkAGM(k)               # local code for complete elliptic integral
@@ -19,7 +19,7 @@ Ie = G2(om + 1im*eta)                 # analytic (exact) answer
 Ia,E,segs,nev = miniquadgk(f,0,2pi,rtol=1e-10)
 @printf "exact:\tIe = %.12g + %.12gi\n" real(Ie) imag(Ie)
 @printf "adap:\tIa = %.12g + %.12gi\t (relerr=%.3g, esterr=%.3g, nsegs=%d, nev=%d)\n" real(Ia) imag(Ia) abs(Ia-Ie)/abs(Ie) E length(segs) nev
-fig = Figure(); ax=Axis(fig[1,1],title="miniquadgk segs")
+fig = Figure(); ax=Axis(fig[1,1],title="miniquadgk segs (om=$om, eta=$eta)")
 showsegs!(segs)
 #display(fig)
 
@@ -81,12 +81,14 @@ end
 end
 
 # test adaptive integrator w/ QPade+GCQ option in Int1DBZ module...
-atol = 1e-6
+atol = 1e-8
 Ia, Ea, sa, neva = adaptquadsqrt(f,0.0,2pi,atol=atol,verb=1)
-@printf "a-QPade:Ia = %.12g + %.12gi\t (relerr=%.3g, esterr=%.3g, nsegs=%d, nev=%d)\n" real(Ia) imag(Ia) abs(Ia-Ie)/abs(Ie) Ea length(sa) neva
-ax=Axis(fig[2,1],title="A-QPade+GCQ segs")
+nsqrt = sum([s.nsqrtsings>0 for s in sa])
+@printf "a-QPade:Ia = %.12g + %.12gi\t (relerr=%.3g, esterr=%.3g, nsegs=%d (nsqrt=%d), nev=%d)\n" real(Ia) imag(Ia) abs(Ia-Ie)/abs(Ie) Ea length(sa) nsqrt neva
+ax=Axis(fig[2,1],title="adap QPade+GCQ: special segs shown green")
 showsegs!(sa)
-display(fig)
+display(fig);
+#save("tightbind_test_qpade.png",fig)
 
 
 

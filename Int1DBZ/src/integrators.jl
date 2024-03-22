@@ -188,7 +188,7 @@ end
 ########### New methods specific to integrand analytic with 1/sqrt singularities...
 
 function adaptquadsqrt(f::Function,a::Number,b::Number;
-    atol=0.0,rtol=0.0,maxevals=1e7,rho=exp(1),verb=0)
+                       atol=0.0,rtol=0.0,maxevals=1e7,rho=exp(1),verb=0)
     """
         I, E, segs, numevals = adaptquadsqrt(f::Function, a::Real, b::Real; ...
                                  atol=0.0,rtol=1e-6,maxevals=1e7,rho=exp(1),verb=0)
@@ -232,10 +232,6 @@ function adaptquadsqrt(f::Function,a::Number,b::Number;
         E += -s.E + s1.E + s2.E
         heappush!(segs, s1, Reverse)
         heappush!(segs, s2, Reverse)
-    end
-    if verb>0
-        nsqrt = sum([s.nsqrtsings>0 for s in segs])
-       @printf "\tadaptquadsqrt:\tfevals=%d, nsegs=%d (nsqrt=%d), claimed err=%.3g\n" numevals[1] length(segs) nsqrt E
     end
     return I, E, segs, numevals[1]
 end
