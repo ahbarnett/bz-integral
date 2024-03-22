@@ -12,7 +12,11 @@ struct Segment{TX,TI,TE}
     E::TE
     # fields to do with experimental methods...
     npoles::Int64       # number of poles subtracted from integrand
+    nsqrtsings::Int64   # num 1/sqrt singularities found
 end
+Segment(a,b,I,E,npoles) = Segment(a,b,I,E,npoles,0)     # defaults for expt fields
+Segment(a,b,I,E) = Segment(a,b,I,E,0)
+
 # make segments sort by error in a heap...
 Base.isless(i::Segment, j::Segment) = isless(i.E, j.E)
 
@@ -82,7 +86,7 @@ The struct `r` must contain a valid set of GK nodes and weights for the
 standard interval [-1,1].
 Returns a `Segment` object
 containing `a` and `b` endpoints, `I` integral estimate, `E` error
-estimate, and `npoles=0` (no poles subtracted since plain GK).
+estimate, and defaults in experimental fields.
 """
 function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     # Barnett 6/30/23 tidying up applyrule!
@@ -98,7 +102,7 @@ function applygkrule(fvals::AbstractArray,a::Float64,b::Float64,r::gkrule)
     Ik *= sca
     Ig *= sca
     E = maximum(abs.(Ig-Ik))     # allows I to be Vector
-    return Segment(a,b,Ik,E,0)   # 0 is npoles, means plain GK
+    return Segment(a,b,Ik,E)
 end
 
 """
@@ -147,6 +151,8 @@ miniquadgk(f,a::Number,b::Number;kwargs...) = miniquadgk(f,Float64(a),Float64(b)
     vector of such to the given gnuplot session (or start session if did not
     exist). Segment is a type from miniquadgk.
     Color-coding via npoles is used (a field only used outside miniquadgk).
+
+    *** obsolete since Gnuplot.
 """
 function plotsegs!(segs::Vector{Segment{TX,TI,TE}}, session=:default) where {TX,TI,TE}
     a = [s.a for s in segs]
@@ -171,15 +177,16 @@ end
 plotsegs!(seg::Segment,args...) = plotsegs!([seg],args...)  # handle single segment
 
 """
-    showsegs!(segs) adds a Segment or
-    vector of such to the current Makie axes.
-    Segment is a type from miniquadgk.
-    Color-coding via npoles is used (a field only used outside miniquadgk).
+    showsegs!(segs) is a plotting utility which adds a `Segment`` or
+    vector of such to the current Makie axes (Cairo or GL).
+    `Segment`` is a type from miniquadgk.
+    Color-codes experimental fields (black=plain, red=pole, green=sqrt)
 """
 function showsegs!(segs::Vector{Segment{TX,TI,TE}}) where {TX,TI,TE}
     for s in segs
         ab = [s.a,s.b]
         c = (s.npoles==0) ? :black : :red
+        if s.nsqrtsings>0 c = :green end      # inv-sqrt overrides
         scatterlines!(real(ab), imag(ab), markersize=10, marker='+', color=c)
     end
 end

@@ -2,7 +2,10 @@ module Int1DBZ
 """
 Int1DBZ: 1D Brillouin zone integration, comparing a variety of methods.
 
-A H Barnett. started June 2023, based off simpler subset of Cont1DBZ, QuadGK
+A H Barnett.
+started June 2023, based off simpler subset of Cont1DBZ, QuadGK.
+Summer '23: pole-subtraction for inner iterated integral.
+Mar '24: add in 1/sqrt singularity methods for iterated middle-integral.
 """
 
 # stuff all included code lumps need
@@ -17,8 +20,8 @@ include("evaluators.jl")
 
 using DataStructures
 import Base.Order.Reverse
-using Gnuplot
-using CairoMakie
+using Gnuplot               # *** to remove
+using CairoMakie            # should viz pkgs even be in this?
 Gnuplot.options.gpviewer=true    # for vscode; see https://discourse.julialang.org/t/gnuplot-from-vscode-no-plot/65458/4
 export Segment, gkrule, applygkrule, applygkrule!, miniquadgk, plotsegs!, showsegs!
 include("miniquadgk.jl")
@@ -35,7 +38,7 @@ include("genchebquad.jl")
 
 using QuadGK         # SGJ Pkg
 export realadap, realadap_lxvm, realmyadap, applypolesub!, adaptquadinv
-export realquadinv
+export realquadinv, adaptquadsqrt, applyqpade!
 include("integrators.jl")
 
 # other utils

@@ -3,6 +3,7 @@
 using Int1DBZ
 using OffsetArrays
 using Printf
+verb = 0
 
 @printf "miniquadgk on plain smooth func...\n"
 f(x::Number) = sin(3*x+1)
@@ -20,8 +21,10 @@ I, E, segs, numevals = miniquadgk(f,a,b)
 I, E, segs, numevals = miniquadgk(f,a,b,rtol=1e-12)
 @printf "\tminiquadgk(%d fevals) err %.3g, \testim E %.3g\n" numevals I-Ie E
 
-Gnuplot.options.gpviewer=true
-plotsegs!(segs,:miniquadgk)   # labeled plot
+if verb > 0
+    Gnuplot.options.gpviewer = true
+    plotsegs!(segs, :miniquadgk)   # labeled plot
+end
 
 @printf "perf test vs quadgk in context of real-axis quad of 1/(c+h(x))...\n"
 
