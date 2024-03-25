@@ -5,6 +5,7 @@ using Printf
 using OffsetArrays     # for F-series
 using StaticArrays     # only for n>1
 using LinearAlgebra
+using FastGaussQuadrature
 BLAS.set_num_threads(1)
 using Random.Random
 using BenchmarkTools
@@ -61,9 +62,10 @@ H = OffsetArray([SMatrix{n,n}(am[m1]*am[m2] * randn(ComplexF64,(n,n)))
                 for m1 in mlist, m2 in mlist], mlist, mlist)     # fill 2D OA
 Hconj = OffsetArray([H[m1,m2]' for m1 in mlist, m2 in mlist], mlist, mlist)
 H = (H + reverse(Hconj))/2   # reverse flips both indices: H herm for real args
-eta=1e-5; om=0.6   # fix for now
-tol=1e-6
-itol = 1e-2*tol      # tol for performing inner (x) integral
+eta=1e-6; om=0.6   # fix for now
+tol=1e-3
+itol = 1e-6*tol      # tol for performing inner (x) integral
+verb = 1
 @printf "Test rand 2D F-series: n=%d M=%d ω=%g η=%g tol=%g itol=%g...\n" n M om eta tol itol
 f2(y) = fmid(y,H,om,eta,tol=itol,rootmeth="F")   # single-argument middle integrand
 f2naive(y) = fmidnaive(y,H,om,eta,tol=itol)   # same but use miniquadgk for inner
@@ -76,9 +78,19 @@ nsqrt = sum([s.nsqrtsings>0 for s in s])
 @printf("aQPade:\tI = %.12g + %.12gi\t (reldiff=%.3g, esterr=%.3g, nsegs=%d [nsqrt=%d], nev=%d)\n",
     real(I),imag(I),abs(I-Ia)/abs(Ia),E,length(s),nsqrt,nev)
 if verb>0 fig = Figure()     # examine segs (green shows special qpade+GCQ used)
-    ax=Axis(fig[1,1],title="miniquadgk segs (om=$om, eta=$eta): nev=$neva")
+    ax=Axis(fig[1,1],title=
+    "f_2(y) om=$om eta=$eta: evals quadgk $neva, aQPade (shown shifted) $nev")
     showsegs!(segsa)
-    ax2=Axis(fig[2,1],title="a-QPade+GCQ segs: nev=$nev (nsqrtsegs=$nsqrt)")
-    showsegs!(s)
+    z0,_ = gausslegendre(10)    # eval f2 within all segs via this rule
+    yg = [(s.a+s.b)/2 .+ (s.b-s.a)/2*z0 for s in segsa]  # all y vals
+    yg = sort(reduce(vcat, yg))         # flatten to one vec, ordered
+    f2g = [f2(y) for y in yg]          # do expensive eval on all y vals
+    lines!(yg,real(f2g),color=:blue)     # show integrand on resolved grid
+    lines!(yg,imag(f2g),color=:blue,linestyle=:dot)
+    #ax2=Axis(fig[2,1],title="a-QPade+GCQ segs: nev=$nev (nsqrtsegs=$nsqrt)")
+    c=100im; splt = [Segment(s.a+c,s.b+c,s.I,s.E,s.npoles,s.nsqrtsings) for s in s]
+    showsegs!(splt)
+    ax.limits=(0.0,2pi,-50.0,150)    # shows both seg types nicely
     display(fig)
+    save("devel/middleint_M10_aqpade.png",fig)
 end
